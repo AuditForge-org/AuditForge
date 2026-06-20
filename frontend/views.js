@@ -104,6 +104,7 @@ window.Views = (function () {
   // ════════════════════════════════════════════════════════════════
   function scan(root) {
     let cancelWatch = null;
+    const ts = { token: '', widgetId: null };  // Cloudflare Turnstile state
 
     root.innerHTML = `
 <section class="hero">
@@ -219,6 +220,7 @@ window.Views = (function () {
           <button class="btn btn-primary" id="af-run">Run audit →</button>
         </div>
       </div>
+      <div class="af-ts" id="af-turnstile"></div>
       <p class="console-disclosure">Engines run in isolated, network-disabled sandboxes. To generate the plain-English brief, your findings and a portion of the submitted source are sent to a third-party AI provider (Groq). Paste audits aren't stored unless you publish them. See our <a href="#/privacy">Privacy Policy</a>.</p>
     </div>
     <div id="af-progress"></div>
@@ -354,7 +356,15 @@ window.Views = (function () {
       </div>`;
     }
 
+    const resetTurnstile = () => {
+      try { if (window.turnstile && ts.widgetId != null) window.turnstile.reset(ts.widgetId); } catch (e) {}
+      ts.token = '';
+    };
     function submit(source, enableFuzzing) {
+      // If Turnstile is active, require a token before spending an audit slot.
+      if ((window.AF_CONFIG || {}).turnstileSiteKey && !ts.token) {
+        return toast('Please complete the verification check below the form.', true);
+      }
       const prog = $('#af-progress', root);
       prog.innerHTML = progressUI(null);
       const pstage = () => $('#af-pstage', root), pbar = () => $('#af-pbar', root), plog = () => $('#af-plog', root);
@@ -366,7 +376,8 @@ window.Views = (function () {
       };
       clog('submitting ' + source.type + ' audit…');
       prog.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      API.submitAudit(source, { enableFuzzing }).then(({ id }) => {
+      API.submitAudit(source, { enableFuzzing, turnstileToken: ts.token }).then(({ id }) => {
+        resetTurnstile();  // token is single-use — refresh for the next submit
         clog('queued · ' + id, 'ok');
         if (cancelWatch) cancelWatch();
         cancelWatch = API.watchAudit(id, (data) => {
@@ -386,6 +397,7 @@ window.Views = (function () {
           }
         });
       }).catch(e => {
+        resetTurnstile();  // refresh the (now-spent) token so a retry can re-verify
         const friendly = /missing api key|could not resolve source|not verified/i.test(e.message || '')
           ? 'Could not fetch that contract’s source on this instance — paste the source or link a GitHub repo instead.'
           : e.message;
@@ -411,7 +423,40 @@ window.Views = (function () {
       }
     });
 
-    return () => { if (cancelWatch) cancelWatch(); };
+    // Render the Cloudflare Turnstile widget when configured (sitekey from /api/config).
+    function mountTurnstile() {
+      const key = (window.AF_CONFIG || {}).turnstileSiteKey;
+      const el = $('#af-turnstile', root);
+      if (!key || !el) return;
+      const render = () => {
+        if (!window.turnstile || ts.widgetId != null) return;
+        try {
+          ts.widgetId = window.turnstile.render(el, {
+            sitekey: key, theme: 'auto',
+            callback: (t) => { ts.token = t; },
+            'expired-callback': () => { ts.token = ''; },
+            'error-callback': () => { ts.token = ''; },
+          });
+        } catch (e) {}
+      };
+      if (window.turnstile) return render();
+      if (!document.getElementById('cf-turnstile-js')) {
+        const s = document.createElement('script');
+        s.id = 'cf-turnstile-js';
+        s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js';
+        s.async = true; s.defer = true; s.onload = render;
+        document.head.appendChild(s);
+      } else {
+        const iv = setInterval(() => { if (window.turnstile) { clearInterval(iv); render(); } }, 200);
+        setTimeout(() => clearInterval(iv), 6000);
+      }
+    }
+    mountTurnstile();
+
+    return () => {
+      if (cancelWatch) cancelWatch();
+      try { if (window.turnstile && ts.widgetId != null) window.turnstile.remove(ts.widgetId); } catch (e) {}
+    };
   }
 
   // ════════════════════════════════════════════════════════════════

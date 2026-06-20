@@ -463,6 +463,9 @@
   color: var(--ink-3); margin: 0; padding: 14px 24px 20px; border-top: 1px solid var(--line);
 }
 .console-disclosure a { color: var(--amber); }
+/* Cloudflare Turnstile widget row — collapses to nothing when not configured */
+.af-ts { padding: 14px 24px 0; }
+.af-ts:empty { display: none; }
 
 /* ============================================================
    FOOTER LEGAL LINKS
