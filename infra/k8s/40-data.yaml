@@ -1,0 +1,144 @@
+# Forensiq data layer
+#
+# Single-instance Postgres and Redis as StatefulSets.
+#
+# IMPORTANT: this is the minimum-viable config. In production you should
+# replace these with managed services (RDS, Aurora, ElastiCache, etc.)
+# via the Terraform in ../terraform/. The StatefulSets here exist for:
+#   - Small self-hosted deployments
+#   - Staging environments
+#   - The minimum-cost path before scaling demand
+
+# ─── Postgres ─────────────────────────────────────────────────────────
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: forensiq-postgres
+  namespace: forensiq
+  labels: { app.kubernetes.io/component: postgres }
+spec:
+  clusterIP: None
+  ports: [{ port: 5432 }]
+  selector: { app.kubernetes.io/component: postgres }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: forensiq-postgres
+  namespace: forensiq
+spec:
+  serviceName: forensiq-postgres
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/component: postgres }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/component: postgres }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        fsGroup: 999
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: postgres
+          image: postgres:16.4-alpine@sha256:0fbb04eebf85bbf6e1c2e5cd3a8e0e9b48c50cf4fc70f1cd47a8da3d3eaf95eb
+          # The digest above is a placeholder; replace with the actual
+          # current digest. Use: docker pull postgres:16.4-alpine && docker inspect
+          ports: [{ containerPort: 5432 }]
+          env:
+            - { name: POSTGRES_USER, value: forensiq }
+            - { name: POSTGRES_DB,   value: forensiq }
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: forensiq-postgres-password, key: password }
+            - { name: PGDATA, value: /var/lib/postgresql/data/pgdata }
+          resources:
+            requests: { cpu: 500m,  memory: 1Gi }
+            limits:   { cpu: 2000m, memory: 4Gi }
+          readinessProbe:
+            exec: { command: [pg_isready, -U, forensiq] }
+            periodSeconds: 5
+          livenessProbe:
+            exec: { command: [pg_isready, -U, forensiq] }
+            periodSeconds: 15
+          volumeMounts:
+            - { name: data, mountPath: /var/lib/postgresql/data }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false   # postgres needs to write to pg_wal, etc.
+            capabilities: { drop: [ALL] }
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 50Gi
+        # storageClassName omitted to use cluster default;
+        # set explicitly for SSD / gp3 in production.
+
+# ─── Redis ───────────────────────────────────────────────────────────
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: forensiq-redis
+  namespace: forensiq
+  labels: { app.kubernetes.io/component: redis }
+spec:
+  clusterIP: None
+  ports: [{ port: 6379 }]
+  selector: { app.kubernetes.io/component: redis }
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: forensiq-redis
+  namespace: forensiq
+spec:
+  serviceName: forensiq-redis
+  replicas: 1
+  selector:
+    matchLabels: { app.kubernetes.io/component: redis }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/component: redis }
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        fsGroup: 999
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: redis
+          image: redis:7.4-alpine@sha256:c9eb2a3637df4f4d8f6d7b87b9c75e8c0a4d2e6c8a8a4b14fab1f9f8d63efc05
+          # Placeholder digest; replace with current.
+          command:
+            - redis-server
+            - --maxmemory 1gb
+            - --maxmemory-policy allkeys-lru
+            - --save ""              # No persistence; BullMQ is ephemeral
+            - --appendonly no
+          ports: [{ containerPort: 6379 }]
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits:   { cpu: 1000m, memory: 1.5Gi }
+          readinessProbe:
+            tcpSocket: { port: 6379 }
+          livenessProbe:
+            tcpSocket: { port: 6379 }
+          volumeMounts:
+            - { name: data, mountPath: /data }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities: { drop: [ALL] }
+  volumeClaimTemplates:
+    - metadata: { name: data }
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources: { requests: { storage: 8Gi } }

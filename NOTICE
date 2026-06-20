@@ -1,0 +1,72 @@
+FORENSIQ — Third-party software notice
+=======================================
+
+Forensiq is licensed under the GNU Affero General Public License v3.0 or
+later (AGPL-3.0-or-later). See LICENSE for the full text.
+
+Forensiq invokes the following analysis engines as separate processes
+inside isolated Docker containers. Their licenses govern each engine's
+own code; the AGPL governs Forensiq's orchestration, normalization,
+consensus, and presentation layers.
+
+──────────────────────────────────────────────────────────────────────
+AGPL-3.0 components (compatible with our license)
+──────────────────────────────────────────────────────────────────────
+
+  Slither       https://github.com/crytic/slither       (AGPL-3.0)
+                Trail of Bits — static analyzer
+
+  Echidna       https://github.com/crytic/echidna       (AGPL-3.0)
+                Trail of Bits — property-based fuzzer
+
+Because Forensiq is itself AGPL-3.0, distribution and SaaS hosting that
+includes these engines is permitted, subject to the source-availability
+obligation in AGPL Section 13.
+
+──────────────────────────────────────────────────────────────────────
+Permissively licensed components
+──────────────────────────────────────────────────────────────────────
+
+  Aderyn        https://github.com/Cyfrin/aderyn        (MIT)
+                Cyfrin — Rust-based static analyzer
+
+  Mythril       https://github.com/ConsenSys/mythril    (MIT)
+                ConsenSys — symbolic execution
+
+  Semgrep       https://semgrep.dev                     (LGPL-2.1)
+                semgrep-rules/solidity                  (Apache-2.0)
+
+  Solhint       https://github.com/protofire/solhint    (MIT)
+                Protofire — Solidity linter
+
+──────────────────────────────────────────────────────────────────────
+Runtime dependencies
+──────────────────────────────────────────────────────────────────────
+
+Node.js packages used by Forensiq (Express, BullMQ, PDFKit, etc.) are
+mostly MIT/ISC/Apache-2.0 licensed. The complete dependency tree with
+licenses can be inspected via `npm ls --all --json` against the
+checked-in package-lock.json.
+
+──────────────────────────────────────────────────────────────────────
+External services
+──────────────────────────────────────────────────────────────────────
+
+  Anthropic Claude API   used for AI auditor brief generation
+                         (subject to Anthropic's terms; user supplies
+                         their own API key)
+
+  Etherscan / Oklink     verified-source fetching for on-chain audits
+
+  GitHub API             OAuth login, App authentication, repo fetch
+
+──────────────────────────────────────────────────────────────────────
+Operator obligations (AGPL Section 13)
+──────────────────────────────────────────────────────────────────────
+
+If you host a MODIFIED version of Forensiq as a network-accessible
+service, you must make the modified source code available to users
+of that service. A "Source" link in the application footer pointing
+to the actual deployed source satisfies this. The frontend ships
+with such a link enabled by default; do not remove it on a hosted
+deployment without providing an equivalent disclosure path.

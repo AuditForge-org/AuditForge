@@ -1,0 +1,182 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# FORENSIQ — production stack for a single VPS / dedicated server.
+#
+# This is the file you deploy with. It differs from the dev docker-compose.yml:
+#   - reads all secrets from .env (nothing hardcoded)
+#   - restart policies so the stack survives reboots
+#   - resource limits so a heavy audit can't OOM the host
+#   - the worker mounts the host Docker socket to spawn engine containers
+#   - postgres + redis persist to named volumes
+#   - an internal-only network; only the API port is exposed (to the reverse proxy)
+#
+# Bring up:        docker compose -f docker-compose.prod.yml up -d
+# Build app+tools: see deploy.sh (one-shot)
+# Logs:            docker compose -f docker-compose.prod.yml logs -f api worker
+# Stop:            docker compose -f docker-compose.prod.yml down
+#
+# IMPORTANT: build the six engine images first (deploy.sh does this):
+#   docker compose --profile build-tools build
+
+name: forensiq
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    # Parent all forensiq containers under the box's webapps.slice so they
+    # share its hard MemoryMax/CPUQuota cap and can never starve the geth
+    # ETHW node (which lives on the degraded root array). Box uses the
+    # systemd cgroup driver, so this slice nesting takes effect.
+    cgroup_parent: webapps.slice
+    environment:
+      POSTGRES_USER: forensiq
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: forensiq
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/docker/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forensiq -d forensiq"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks: [internal]
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    cgroup_parent: webapps.slice
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "512mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    networks: [internal]
+    deploy:
+      resources:
+        limits:
+          memory: 768m
+
+  api:
+    image: forensiq:local
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.vps
+    restart: unless-stopped
+    cgroup_parent: webapps.slice
+    command: ["node", "dist/server.js"]
+    env_file: [.env]
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATABASE_URL: postgres://forensiq:${POSTGRES_PASSWORD}@postgres:5432/forensiq
+      REDIS_URL: redis://redis:6379
+    # Only expose to localhost — the reverse proxy (Caddy/nginx) terminates TLS
+    # and forwards here. Never bind 0.0.0.0:3000 in production.
+    # NOTE: host port 8090 (not 3000) — 3000/3001/3002 are taken by the
+    # co-hosted epow.io stack on this box. Container port stays 3000.
+    ports:
+      - "127.0.0.1:8090:3000"
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [internal]
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+
+  worker:
+    image: forensiq:local
+    # No build block — reuses the image built by the api service above
+    restart: unless-stopped
+    cgroup_parent: webapps.slice
+    command: ["node", "dist/worker.js"]
+    env_file: [.env]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://forensiq:${POSTGRES_PASSWORD}@postgres:5432/forensiq
+      REDIS_URL: redis://redis:6379
+      # Keep this conservative — each concurrent audit can use 1-2 cores
+      # and up to 4GB (Echidna). Rule of thumb: (cores - 2) / 2.
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-2}
+      # Engine tool containers are spawned via the HOST docker daemon, so the
+      # worker's scratch dir MUST live at an identical absolute path on the
+      # host and inside this container. A named volume would not satisfy that
+      # (the host path differs), so `docker run -v <dir>:/input` would mount an
+      # empty dir and every engine would see no source. We bind-mount the same
+      # path on both sides and point os.tmpdir() at it via TMPDIR.
+      TMPDIR: /srv/dapp/forensiq/worker-scratch
+      # The engine containers the worker spawns (docker run) are separate
+      # top-level containers, NOT children of this cgroup — so cap them under
+      # the same slice explicitly, or a heavy mythril/echidna run escapes the
+      # webapps.slice ceiling and could starve the geth node.
+      ENGINE_CGROUP_PARENT: webapps.slice
+    volumes:
+      # The worker spawns engine containers (slither, mythril, …) via the
+      # host Docker daemon. This socket mount is what makes that work on a
+      # single host. The worker image itself contains the docker CLI.
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Identical-path bind mount (see TMPDIR above) so the contract source the
+      # worker writes is visible to the engine containers spawned on the host.
+      - /srv/dapp/forensiq/worker-scratch:/srv/dapp/forensiq/worker-scratch
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    networks: [internal]
+    deploy:
+      resources:
+        limits:
+          # Generous — the spawned engine containers have their own caps
+          # set in the runner code (--memory per docker run).
+          memory: 6g
+
+  # ─── Engine image builders (build-only, never run as services) ───────
+  # `docker compose --profile build-tools build` builds these six images.
+  # The worker then invokes them with `docker run` on demand.
+  slither-img:
+    image: forensiq/slither:0.10.4
+    build: { context: ./backend/docker, dockerfile: slither.Dockerfile }
+    profiles: [build-tools]
+    command: ["--version"]
+  mythril-img:
+    image: forensiq/mythril:0.24.8
+    build: { context: ./backend/docker, dockerfile: mythril.Dockerfile }
+    profiles: [build-tools]
+    command: ["version"]
+  aderyn-img:
+    image: forensiq/aderyn:0.5.5
+    build: { context: ./backend/docker, dockerfile: aderyn.Dockerfile }
+    profiles: [build-tools]
+    command: ["--version"]
+  semgrep-img:
+    image: forensiq/semgrep:1.85
+    build: { context: ./backend/docker, dockerfile: semgrep.Dockerfile }
+    profiles: [build-tools]
+    command: ["--version"]
+  solhint-img:
+    image: forensiq/solhint:5.0.5
+    build: { context: ./backend/docker, dockerfile: solhint.Dockerfile }
+    profiles: [build-tools]
+    command: ["--version"]
+  echidna-img:
+    image: forensiq/echidna:2.2.4
+    build: { context: ./backend/docker, dockerfile: echidna.Dockerfile }
+    profiles: [build-tools]
+    command: ["--version"]
+
+networks:
+  internal:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -1,0 +1,60 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Forensiq backend image — VPS / self-build variant.
+#
+# This is the Dockerfile used by deploy.sh for single-host deployments.
+# Unlike Dockerfile.app (which pins base images by digest for reproducible
+# CI builds), this uses plain tags so it builds anywhere without needing
+# you to resolve digests first.
+#
+# Same image runs both modes:
+#   - API:    node dist/server.js
+#   - Worker: node dist/worker.js   (needs the docker socket mounted)
+
+# ─── Builder ──────────────────────────────────────────────────────────
+FROM node:20-bookworm-slim AS builder
+WORKDIR /app
+COPY package*.json tsconfig.json ./
+RUN npm ci
+COPY src ./src
+RUN npm run build && npm prune --omit=dev
+
+# ─── Runtime ──────────────────────────────────────────────────────────
+FROM node:20-bookworm-slim
+
+# docker CLI lets the worker spawn engine containers via the mounted socket.
+# tini reaps zombies (PID 1 correctness).
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends docker.io tini fonts-inter fonts-jetbrains-mono && \
+    rm -rf /var/lib/apt/lists/*
+
+# Create the forensiq user. We add it to the `docker` group so the worker
+# can talk to the mounted /var/run/docker.sock. The docker group GID on the
+# host varies (often 999 or 998); the entrypoint script fixes the GID at
+# runtime to match the mounted socket, so we don't hardcode it here.
+# node:20-bookworm-slim ships a 'node' user/group at uid/gid 1000. Remove it so
+# 'forensiq' can own uid/gid 1000 — the entrypoint + COPY --chown expect that
+# name, and the worker's bind-mounted scratch dir is owned by host uid 1000, so
+# matching uids lets the worker write the contract source the engines read.
+RUN userdel -r node 2>/dev/null || true; \
+    groupdel node 2>/dev/null || true; \
+    groupadd -g 1000 forensiq && \
+    useradd -u 1000 -g forensiq -m -d /home/forensiq forensiq
+
+WORKDIR /app
+COPY --from=builder --chown=forensiq:forensiq /app/dist ./dist
+COPY --from=builder --chown=forensiq:forensiq /app/node_modules ./node_modules
+COPY --from=builder --chown=forensiq:forensiq /app/package.json ./package.json
+
+# Entrypoint shim: if the docker socket is mounted, align the container's
+# docker group GID to the socket's owning GID so the non-root user can
+# reach it. Then drop to the forensiq user via gosu-like exec.
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+ENV NODE_ENV=production
+ENV NODE_OPTIONS="--enable-source-maps"
+EXPOSE 3000
+
+ENTRYPOINT ["/usr/bin/tini", "--", "/usr/local/bin/entrypoint.sh"]
+CMD ["node", "dist/server.js"]

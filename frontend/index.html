@@ -1,0 +1,218 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-accent="emerald" data-headline="sans">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<!-- Pre-paint theme: read saved choice (or ?theme=) before first paint to avoid flash. Default light. -->
+<script>
+  (function () {
+    try {
+      // One-time reset: bump RESET to wipe any previously-saved theme so everyone
+      // lands on the new default (dark) once; the toggle is honored thereafter.
+      var RESET = '2026-06-11-dark';
+      if (localStorage.getItem('af-theme-reset') !== RESET) {
+        localStorage.removeItem('af-theme');
+        localStorage.setItem('af-theme-reset', RESET);
+      }
+      var q = new URLSearchParams(location.search).get('theme');
+      var t = q || localStorage.getItem('af-theme') || 'dark';
+      if (t !== 'light' && t !== 'dark') t = 'dark';
+      document.documentElement.setAttribute('data-theme', t);
+      // Match the browser chrome (theme-color) to the active theme at first paint.
+      var mc = document.createElement('meta');
+      mc.setAttribute('name', 'theme-color');
+      mc.setAttribute('content', t === 'dark' ? '#07080A' : '#F3EFE6');
+      document.head.appendChild(mc);
+    } catch (e) {}
+  })();
+</script>
+<title>Audit Forge — Multi-Engine Smart Contract Security Audit</title>
+<meta name="description" content="Audit Forge runs six industry-standard engines — Slither, Mythril, Aderyn, Semgrep, Solhint, Echidna — against your Solidity in parallel and reconciles every finding by consensus. Free, instant, open source." />
+<meta property="og:site_name" content="Audit Forge" />
+<meta property="og:title" content="Audit Forge — Multi-Engine Smart Contract Audit" />
+<meta property="og:description" content="Six independent security engines, one reconciled verdict. Audit any Solidity contract in seconds — free and open source." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://auditforge.org/" />
+<meta property="og:image" content="https://auditforge.org/og-cover.png" />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Audit Forge — Multi-Engine Smart Contract Audit" />
+<meta name="twitter:description" content="Six independent security engines, one reconciled verdict. Audit any Solidity contract free." />
+<meta name="twitter:image" content="https://auditforge.org/og-cover.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./auditforge.css">
+<link rel="stylesheet" href="./auditforge-pages.css">
+<style>
+  /* ── SPA-only helpers (themed via design tokens) ── */
+  #view { position: relative; z-index: 1; }
+  .af-loading, .af-empty {
+    max-width: var(--maxw); margin: 0 auto; padding: 120px 36px;
+    text-align: center; color: var(--ink-3);
+    font-family: var(--mono); font-size: 13px; letter-spacing: 0.04em;
+  }
+  .af-empty .ico { font-size: 30px; display: block; margin-bottom: 14px; opacity: 0.6; }
+  .af-empty a { color: var(--amber); }
+  .spinner {
+    display: inline-block; width: 13px; height: 13px; vertical-align: middle;
+    border: 2px solid currentColor; border-right-color: transparent;
+    border-radius: 50%; animation: af-spin 0.8s linear infinite; margin-right: 9px;
+  }
+  @keyframes af-spin { to { transform: rotate(360deg); } }
+  .toast {
+    position: fixed; bottom: 26px; right: 26px; z-index: 200;
+    background: var(--ink); color: var(--bg);
+    padding: 13px 20px; border-radius: 9px;
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.06em;
+    box-shadow: 0 18px 40px -16px rgba(0,0,0,0.5);
+    opacity: 0; transform: translateY(14px); pointer-events: none;
+    transition: opacity .3s var(--ease), transform .3s var(--ease);
+  }
+  .toast.show { opacity: 1; transform: none; }
+  .toast.error { background: var(--red); color: #fff; }
+  /* signed-in user pill in the top bar */
+  .user-pill { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; position: relative; }
+  .user-pill img { width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--line-2); }
+  .user-pill .uname { font-family: var(--mono); font-size: 12px; color: var(--ink-2); letter-spacing: 0.02em; }
+  .user-pill .umenu {
+    position: absolute; top: 30px; right: 0; min-width: 180px; display: none;
+    background: var(--panel); border: 1px solid var(--line-2); border-radius: 10px;
+    padding: 6px; z-index: 60; box-shadow: 0 18px 40px -18px rgba(0,0,0,0.5);
+  }
+  .user-pill.open .umenu { display: block; }
+  .user-pill .umenu a, .user-pill .umenu button {
+    display: block; width: 100%; text-align: left; background: none; border: 0;
+    color: var(--ink-2); font-family: var(--mono); font-size: 12px;
+    padding: 9px 12px; border-radius: 7px; cursor: pointer;
+  }
+  .user-pill .umenu a:hover, .user-pill .umenu button:hover { background: var(--tint); color: var(--ink); }
+  .api-pill.down .dot { background: var(--red) !important; box-shadow: 0 0 0 3px rgba(243,106,110,0.18) !important; }
+  /* big headings must never overflow narrow phones (design's 48px clamp floor is too tall) */
+  .hero h1, .page-hero h1, .section-head h2, .cta-band h2, .display-2, .report-head h1 { overflow-wrap: break-word; }
+  html, body { overflow-x: hidden; }
+  @media (max-width: 680px) {
+    .hero h1 { font-size: 40px; line-height: 1.02; }
+    .page-hero h1 { font-size: 38px; }
+    .report-head h1 { font-size: 30px; }
+    /* kill horizontal overflow: clamp every major block to the viewport, allow
+       grid/flex tracks to shrink, wrap the engine chips, clip the terminal's
+       unbreakable dotted fill, and stack the report header */
+    body, #view, section, .wrap, .hero-top, .hero-left, .hero-right, .hero-proof,
+    .hero-proof .engines, .lede, .hero-stats, .console, .term, .term-body, .editor,
+    .page-hero .grid, .consensus, .install-grid, .report-head, .meta-grid, .reg-list {
+      max-width: 100% !important; min-width: 0 !important;
+    }
+    .hero-proof .engines { flex-wrap: wrap !important; }
+    .term, .term-body, .console, .editor, .code, .tline { overflow: hidden !important; }
+    .console-bar .ttl, .term-bar .ttl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .report-head { grid-template-columns: 1fr; }
+    .meta-grid { grid-template-columns: 1fr 1fr; }
+    .reg-list { overflow-x: auto; }
+  }
+  @media (max-width: 420px) {
+    .hero h1 { font-size: 33px; }
+    .page-hero h1 { font-size: 30px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ============ STATUS TICKER ============ -->
+<div class="ticker" id="ticker" aria-hidden="true">
+  <div class="belt" id="tickerBelt">
+    <span class="item"><b>ENGINES</b> <span class="ok">6/6 OPERATIONAL</span></span>
+    <span class="item"><span class="sep">//</span> <b>SANDBOX</b> ISOLATED · NETWORK-DISABLED</span>
+    <span class="item"><span class="sep">//</span> <b>METHODS</b> STATIC · SYMBOLIC · FUZZING</span>
+    <span class="item"><span class="sep">//</span> <b>TYPICAL SCAN</b> UNDER 60 SECONDS</span>
+    <span class="item"><span class="sep">//</span> <b>LICENSE</b> AGPL-3.0 · 100% OPEN SOURCE</span>
+    <span class="item"><span class="sep">//</span> <b>NETWORKS</b> ETHEREUM · BASE · ARBITRUM · OPTIMISM · POLYGON · BNB CHAIN · ETHEREUMPOW</span>
+    <span class="item"><span class="sep">//</span> <b>FINDINGS</b> SWC-MAPPED · CONSENSUS-SCORED</span>
+  </div>
+</div>
+
+<!-- ============ TOP BAR ============ -->
+<header class="topbar">
+  <div class="wrap">
+    <a href="#/scan" class="brand">
+      <span class="mark">
+        <svg viewBox="0 0 32 32" fill="none">
+          <path d="M16 2 L29 16 L16 30 L3 16 Z" stroke="currentColor" stroke-width="1.6"></path>
+          <path d="M16 9 L23 16 L16 23 L9 16 Z" fill="currentColor" fill-opacity="0.16" stroke="currentColor" stroke-width="1.4"></path>
+        </svg>
+      </span>
+      <span class="name">AUDIT FORGE<small>MULTI-ENGINE AUDIT CONSOLE</small></span>
+    </a>
+    <nav class="nav">
+      <a href="#/scan"     data-route="/scan">Scan</a>
+      <a href="#/registry" data-route="/registry">Registry</a>
+    </nav>
+    <div class="right">
+      <span class="api-pill" id="api-status"><span class="dot"></span>API</span>
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle dark mode" title="Toggle light / dark">
+        <svg class="i-sun" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7"></circle><path d="M12 2.6v2.6M12 18.8v2.6M2.6 12h2.6M18.8 12h2.6M5.4 5.4l1.8 1.8M16.8 16.8l1.8 1.8M18.6 5.4l-1.8 1.8M7.2 16.8l-1.8 1.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>
+        <svg class="i-moon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 14.2A8 8 0 1 1 9.8 4a6.4 6.4 0 0 0 10.2 10.2Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"></path></svg>
+      </button>
+      <span id="user-pill"></span>
+    </div>
+  </div>
+</header>
+
+<!-- ============ DYNAMIC VIEW ============ -->
+<main id="view"></main>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <a href="#/scan" class="brand">
+          <span class="mark">
+            <svg viewBox="0 0 32 32" fill="none">
+              <path d="M16 2 L29 16 L16 30 L3 16 Z" stroke="currentColor" stroke-width="1.6"></path>
+              <path d="M16 9 L23 16 L16 23 L9 16 Z" fill="currentColor" fill-opacity="0.16" stroke="currentColor" stroke-width="1.4"></path>
+            </svg>
+          </span>
+          <span class="name">AUDIT FORGE</span>
+        </a>
+        <p class="desc">Multi-engine smart-contract security analysis. Six independent tools, one reconciled verdict — static analysis, symbolic execution, and property fuzzing, in parallel.</p>
+        <a href="https://github.com/forensiq/forensiq" target="_blank" rel="noopener" class="src">↗ Source code · AGPL-3.0</a>
+      </div>
+      <div class="col">
+        <h4>Product</h4>
+        <a href="#/scan">Run a scan</a>
+        <a href="#/registry">Audit registry</a>
+      </div>
+      <div class="col">
+        <h4>Built on</h4>
+        <span>Slither — Trail of Bits</span>
+        <span>Mythril — Consensys</span>
+        <span>Aderyn — Cyfrin</span>
+        <span>Semgrep · Solhint · Echidna</span>
+      </div>
+      <div class="col">
+        <h4>Resources</h4>
+        <a href="https://swcregistry.io/" target="_blank" rel="noopener">SWC registry</a>
+        <a href="#/registry">Registry</a>
+        <a href="#/terms">Terms of Service</a>
+        <a href="#/privacy">Privacy Policy</a>
+      </div>
+    </div>
+    <div class="footer-base">
+      <span>Audit Forge automates the first pass — it is <b>not</b> a substitute for a professional manual audit. Provided without warranty; use at your own risk.</span>
+      <span class="legal-links"><a href="#/terms">Terms</a> · <a href="#/privacy">Privacy</a></span>
+    </div>
+  </div>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<!-- App scripts -->
+<script src="./api.js"></script>
+<script src="./auditforge.js"></script>
+<script src="./views.js"></script>
+<script src="./app.js"></script>
+</body>
+</html>

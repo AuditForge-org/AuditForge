@@ -1,0 +1,137 @@
+# Forensiq network policies
+#
+# Three layers of policy:
+#
+#   1. default-deny:    no ingress, no egress by default in this namespace
+#   2. api-policy:      API can receive HTTP from ingress + reach postgres/redis/internet
+#   3. worker-policy:   worker reaches postgres/redis/internet (no inbound except metrics)
+#   4. engine-policy:   engine Jobs have NO egress and NO ingress
+#                       (this is the key isolation: a malicious contract
+#                       running inside an engine can't phone home)
+#
+# Requires a NetworkPolicy-aware CNI (Calico, Cilium, etc.). EKS/GKE
+# default CNIs may need extra config to honor egress rules.
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: forensiq
+spec:
+  podSelector: {}
+  policyTypes: [Ingress, Egress]
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: api-policy
+  namespace: forensiq
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: api
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: ingress-nginx }
+      ports:
+        - port: 3000
+          protocol: TCP
+    # Allow Prometheus to scrape /metrics
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: monitoring }
+      ports:
+        - port: 3000
+          protocol: TCP
+  egress:
+    # DNS
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: kube-system }
+          podSelector:
+            matchLabels: { k8s-app: kube-dns }
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # Postgres + Redis (in-cluster)
+    - to:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/component: postgres }
+      ports:
+        - port: 5432
+    - to:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/component: redis }
+      ports:
+        - port: 6379
+    # External APIs: Anthropic, GitHub, Etherscan, etc.
+    # NetworkPolicy can't filter by hostname; we allow all HTTPS egress.
+    # For tighter control, use a service mesh (Istio/Linkerd) with
+    # destination rules.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              # Block private ranges (RFC1918, link-local, etc.)
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+              - 169.254.0.0/16
+      ports:
+        - port: 443
+          protocol: TCP
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: worker-policy
+  namespace: forensiq
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: worker
+  policyTypes: [Ingress, Egress]
+  ingress:
+    # Only Prometheus can reach the worker for metrics
+    - from:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: monitoring }
+      ports:
+        - port: 9090
+          protocol: TCP
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels: { kubernetes.io/metadata.name: kube-system }
+          podSelector:
+            matchLabels: { k8s-app: kube-dns }
+      ports: [{ port: 53, protocol: UDP }, { port: 53, protocol: TCP }]
+    - to:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/component: postgres }
+      ports: [{ port: 5432 }]
+    - to:
+        - podSelector:
+            matchLabels: { app.kubernetes.io/component: redis }
+      ports: [{ port: 6379 }]
+    # K8s API for creating Jobs
+    - to:
+        - ipBlock: { cidr: 0.0.0.0/0 }
+      ports: [{ port: 443, protocol: TCP }, { port: 6443, protocol: TCP }]
+---
+# CRITICAL: engine Jobs run untrusted code. Deny ALL networking.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: engine-no-network
+  namespace: forensiq
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: forensiq-engine
+  policyTypes: [Ingress, Egress]
+  # Empty ingress/egress = deny all

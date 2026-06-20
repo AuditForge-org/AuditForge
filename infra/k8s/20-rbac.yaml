@@ -1,0 +1,57 @@
+# Forensiq RBAC
+#
+# Two service accounts:
+#
+#   forensiq-app:        used by API + worker pods. Needs permission to
+#                        create Jobs in this namespace (workers spawn
+#                        engine Jobs) and read pod logs (to capture
+#                        engine stdout).
+#
+#   forensiq-engine-runner: assigned to spawned engine Jobs. Token NOT
+#                        automounted (see job spec); only assigned so
+#                        the engine pods don't fall back to the default SA.
+#                        Carries NO permissions.
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: forensiq-app
+  namespace: forensiq
+automountServiceAccountToken: true
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: forensiq-engine-runner
+  namespace: forensiq
+automountServiceAccountToken: false   # belt-and-suspenders, also set on Job
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: forensiq-job-runner
+  namespace: forensiq
+rules:
+  - apiGroups: ["batch"]
+    resources: ["jobs"]
+    verbs: ["create", "get", "list", "watch", "delete"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods/log"]
+    verbs: ["get"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: forensiq-job-runner
+  namespace: forensiq
+subjects:
+  - kind: ServiceAccount
+    name: forensiq-app
+    namespace: forensiq
+roleRef:
+  kind: Role
+  name: forensiq-job-runner
+  apiGroup: rbac.authorization.k8s.io

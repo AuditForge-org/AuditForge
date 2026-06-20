@@ -1,0 +1,112 @@
+# Forensiq schema migration + backup
+#
+# The migrate Job runs init.sql against the Postgres instance. Idempotent
+# (CREATE TABLE IF NOT EXISTS). Trigger manually via `kubectl create job
+# --from=cronjob/forensiq-migrate forensiq-migrate-<timestamp>` or apply
+# this with kubectl apply -f and let it run once.
+#
+# The backup CronJob is a starter — for serious production move to a
+# proper tool (WAL-G, pgBackRest, or your cloud's managed backups).
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: forensiq-migrate
+  namespace: forensiq
+spec:
+  ttlSecondsAfterFinished: 600
+  backoffLimit: 3
+  template:
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: forensiq-app
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: migrate
+          image: postgres:16.4-alpine@sha256:0fbb04eebf85bbf6e1c2e5cd3a8e0e9b48c50cf4fc70f1cd47a8da3d3eaf95eb
+          command: ["sh", "-c"]
+          args:
+            - |
+              set -e
+              echo "Waiting for Postgres..."
+              until pg_isready -h forensiq-postgres -U forensiq; do sleep 1; done
+              echo "Applying schema..."
+              psql "$DATABASE_URL" -f /sql/init.sql
+              echo "Done."
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef: { name: forensiq-app, key: DATABASE_URL }
+          volumeMounts:
+            - { name: sql, mountPath: /sql }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+      volumes:
+        - name: sql
+          configMap:
+            name: forensiq-schema
+
+---
+# The init.sql contents must be uploaded as a ConfigMap. Create with:
+#   kubectl create configmap forensiq-schema -n forensiq \
+#     --from-file=init.sql=backend/docker/init.sql
+#
+# This stub is here as a marker; do not commit your real init.sql here
+# as a configmap (use the kubectl command above so it's always fresh).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: forensiq-schema
+  namespace: forensiq
+data:
+  init.sql: |
+    -- Placeholder. Replace with backend/docker/init.sql before deploying.
+    -- Use: kubectl create configmap forensiq-schema --from-file=init.sql=...
+
+---
+# Nightly logical backup. For production prefer streaming WAL or the
+# managed-DB equivalent; this is the absolute minimum.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: forensiq-backup
+  namespace: forensiq
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: OnFailure
+          serviceAccountName: forensiq-app
+          securityContext: { runAsNonRoot: true, runAsUser: 999 }
+          containers:
+            - name: pg-backup
+              image: postgres:16.4-alpine@sha256:0fbb04eebf85bbf6e1c2e5cd3a8e0e9b48c50cf4fc70f1cd47a8da3d3eaf95eb
+              command: ["sh", "-c"]
+              args:
+                - |
+                  set -e
+                  ts=$(date -u +%Y%m%dT%H%M%SZ)
+                  pg_dump --no-owner --no-acl --clean --if-exists --format=custom \
+                    "$DATABASE_URL" > /backup/forensiq-${ts}.dump
+                  # Push to S3 — requires aws-cli image; replace with your tooling
+                  # aws s3 cp /backup/forensiq-${ts}.dump s3://${BACKUP_BUCKET}/postgres/
+                  echo "Backup written"
+              env:
+                - name: DATABASE_URL
+                  valueFrom: { secretKeyRef: { name: forensiq-app, key: DATABASE_URL } }
+              volumeMounts:
+                - { name: backup, mountPath: /backup }
+          volumes:
+            - name: backup
+              emptyDir: { sizeLimit: 10Gi }

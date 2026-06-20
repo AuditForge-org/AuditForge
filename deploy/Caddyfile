@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+#
+# Caddy reverse proxy for Forensiq.
+#
+#   sudo apt install caddy
+#   sudo cp deploy/Caddyfile /etc/caddy/Caddyfile
+#   sudo sed -i 's/forensiq.example.com/YOUR.DOMAIN/' /etc/caddy/Caddyfile
+#   # also set the frontend root path below to where you cloned the repo
+#   sudo systemctl reload caddy
+#
+# Caddy automatically obtains and renews a Let's Encrypt cert. Make sure
+# DNS points here and ports 80+443 are open.
+#
+# TOPOLOGY:
+#   - The SPA (static HTML/CSS/JS in frontend/) is served directly by Caddy
+#   - Everything under /api/* is proxied to the backend container
+#   - The frontend uses same-origin relative URLs, so no CORS config needed
+#
+# This is why docker-compose.prod.yml binds the API to 127.0.0.1:3000 —
+# Caddy is the only thing that talks to it.
+
+forensiq.example.com {
+	encode zstd gzip
+
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Frame-Options "DENY"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# API + auth + webhooks + metrics → backend container
+	@api path /api/* /metrics
+	handle @api {
+		reverse_proxy 127.0.0.1:3000 {
+			transport http {
+				read_timeout 60s
+			}
+		}
+	}
+
+	# Everything else → the static SPA.
+	# CHANGE THIS PATH to where you cloned the repo's frontend/ directory.
+	handle {
+		root * /home/forensiq/forensiq/frontend
+		try_files {path} /index.html
+		file_server
+	}
+
+	log {
+		output file /var/log/caddy/forensiq.log {
+			roll_size 50mb
+			roll_keep 10
+		}
+	}
+}

@@ -1,0 +1,39 @@
+# ── Secrets / environment ──────────────────────────────────────────
+# NEVER commit real env files. Only the *.example templates are tracked.
+.env
+.env.*
+!.env.example
+!.env.production.example
+**/.env
+**/.env.*
+!**/.env.example
+*.pem
+*.key
+secrets/
+
+# ── Dependencies / build output ────────────────────────────────────
+node_modules/
+**/node_modules/
+dist/
+**/dist/
+build/
+*.tsbuildinfo
+coverage/
+
+# ── Runtime / scratch / data ───────────────────────────────────────
+worker-scratch/
+*.log
+logs/
+tmp/
+*.pid
+
+# ── Internal, not part of the published source ─────────────────────
+# Design bundles / client uploads — not application source code.
+_redesign/
+
+# ── OS / editor cruft ──────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp

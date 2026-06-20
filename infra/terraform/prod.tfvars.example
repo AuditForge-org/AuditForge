@@ -1,0 +1,7 @@
+# Copy to prod.tfvars (or staging.tfvars) and fill in.
+
+environment           = "prod"
+region                = "us-east-1"
+domain                = "forensiq.example.com"
+rds_instance_class    = "db.m6g.large"
+elasticache_node_type = "cache.m6g.medium"

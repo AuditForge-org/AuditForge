@@ -1,0 +1,102 @@
+# Forensiq observability stack hooks
+#
+# This file declares the Prometheus ServiceMonitor and PrometheusRule
+# CRDs that the kube-prometheus-stack expects. If you don't run that
+# operator, ignore this file and use the prometheus.io/scrape annotations
+# already on the Deployments.
+
+# ─── ServiceMonitor for API ─────────────────────────────────────────
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: forensiq-api
+  namespace: forensiq
+  labels:
+    release: prometheus    # match your Prometheus operator's selector
+spec:
+  selector:
+    matchLabels: { app.kubernetes.io/component: api }
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+  namespaceSelector:
+    matchNames: [forensiq]
+
+---
+# ─── ServiceMonitor for worker ──────────────────────────────────────
+# Workers need a headless Service to be scraped. (Not declared here; add
+# a forensiq-worker-metrics Service of type ClusterIP if you want this.)
+#
+# Without that, the prometheus.io/scrape pod annotation gives you pod-level
+# scraping which works for most setups.
+
+---
+# ─── Alerts ─────────────────────────────────────────────────────────
+
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: forensiq
+  namespace: forensiq
+  labels:
+    release: prometheus
+spec:
+  groups:
+    - name: forensiq.rules
+      interval: 30s
+      rules:
+        # Audit failure spikes
+        - alert: ForensiqAuditFailureRateHigh
+          expr: |
+            sum(rate(forensiq_audits_total{result="error"}[5m]))
+            /
+            sum(rate(forensiq_audits_total[5m])) > 0.1
+          for: 10m
+          labels: { severity: warning }
+          annotations:
+            summary: "Audit failure rate >10% over 5 min"
+            description: "Investigate worker logs and engine container failures."
+
+        # Single tool consistently failing
+        - alert: ForensiqEngineDown
+          expr: |
+            sum by (tool) (rate(forensiq_engine_runs_total{result="error"}[5m]))
+            > 0.5
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: "Engine {{ $labels.tool }} failing on >50% of runs"
+            description: "Container image issue, network policy, or upstream bug."
+
+        # API 5xx
+        - alert: ForensiqApi5xxHigh
+          expr: |
+            sum(rate(forensiq_http_requests_total{status=~"5.."}[5m])) > 0.1
+          for: 5m
+          labels: { severity: critical }
+          annotations:
+            summary: "API serving 5xx responses"
+
+        # Queue depth growing unbounded
+        - alert: ForensiqQueueBacklog
+          expr: |
+            forensiq_queue_jobs{state="waiting"} > 50
+          for: 15m
+          labels: { severity: warning }
+          annotations:
+            summary: "Audit queue backlog growing"
+            description: "Scale up worker replicas or investigate stuck jobs."
+
+        # P95 audit latency
+        - alert: ForensiqAuditSlow
+          expr: |
+            histogram_quantile(0.95,
+              sum by (le) (rate(forensiq_audit_duration_seconds_bucket[10m]))
+            ) > 600
+          for: 20m
+          labels: { severity: warning }
+          annotations:
+            summary: "P95 audit duration exceeds 10 min"
+            description: "Echidna campaigns running long or symbolic exec stalling."

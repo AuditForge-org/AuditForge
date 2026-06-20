@@ -1,0 +1,50 @@
+# Forensiq ingress
+#
+# Requires:
+#   - ingress-nginx (or compatible) in the cluster
+#   - cert-manager with a ClusterIssuer named 'letsencrypt'
+#
+# If you use a different ingress controller (Traefik, HAProxy, Istio Gateway, etc.),
+# adapt the annotations accordingly. The behavior we need:
+#   - HTTPS termination with auto-renewed certs
+#   - Force HTTP → HTTPS
+#   - Reasonable timeouts for the long /api/audits POST when it does inline source fetching
+#   - Higher body-size limit for pasted contracts (4MB matches express config)
+#   - Pass real client IP
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: forensiq
+  namespace: forensiq
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-body-size: "4m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "120"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "120"
+    # Per-IP rate limit (auth endpoints should be more restrictive — see backend limiter)
+    nginx.ingress.kubernetes.io/limit-rps: "20"
+    nginx.ingress.kubernetes.io/limit-burst-multiplier: "5"
+    # Security headers; tune per your CSP needs
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      more_set_headers "X-Frame-Options: DENY";
+      more_set_headers "X-Content-Type-Options: nosniff";
+      more_set_headers "Referrer-Policy: strict-origin-when-cross-origin";
+      more_set_headers "Strict-Transport-Security: max-age=31536000; includeSubDomains";
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [forensiq.example.com]
+      secretName: forensiq-tls
+  rules:
+    - host: forensiq.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: forensiq-api
+                port: { number: 80 }

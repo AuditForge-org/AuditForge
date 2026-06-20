@@ -1,0 +1,131 @@
+# Forensiq worker
+#
+# Consumes the BullMQ 'audits' queue. Each replica handles
+# WORKER_CONCURRENCY jobs in parallel. With ENGINE_RUNTIME=kubernetes the
+# worker spawns engine Jobs in the same namespace.
+#
+# Autoscaling is queue-depth driven via KEDA (recommended) or via custom
+# metrics if you don't run KEDA. The HPA below uses CPU as a fallback;
+# add a KEDA ScaledObject for proper queue-aware scaling.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: forensiq-worker
+  namespace: forensiq
+  labels:
+    app.kubernetes.io/name: forensiq
+    app.kubernetes.io/component: worker
+spec:
+  replicas: 2
+  revisionHistoryLimit: 5
+  strategy:
+    # Recreate rolling: jobs in flight finish first. Long Echidna jobs can
+    # take several minutes; the readinessProbe + graceful shutdown handle this.
+    type: RollingUpdate
+    rollingUpdate: { maxSurge: 1, maxUnavailable: 0 }
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: forensiq
+      app.kubernetes.io/component: worker
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: forensiq
+        app.kubernetes.io/component: worker
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: forensiq-app
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        fsGroup: 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: worker
+          image: ghcr.io/forensiq/forensiq:latest@sha256:0000000000000000000000000000000000000000000000000000000000000000
+          imagePullPolicy: IfNotPresent
+          command: ["node", "dist/worker.js"]
+          envFrom:
+            - secretRef: { name: forensiq-app }
+          env:
+            # Worker-specific overrides
+            - { name: WORKER_CONCURRENCY, value: "4" }
+            # Optional small HTTP server inside worker for metrics
+            - { name: WORKER_METRICS_PORT, value: "9090" }
+          ports:
+            - { name: metrics, containerPort: 9090 }
+          resources:
+            requests: { cpu: 200m, memory: 256Mi }
+            limits:   { cpu: 2000m, memory: 2Gi }
+          readinessProbe:
+            # Worker is ready if Redis connection works.
+            # Implement /readyz on the metrics port.
+            httpGet: { path: /readyz, port: metrics }
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: { path: /healthz, port: metrics }
+            periodSeconds: 30
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: { sizeLimit: 256Mi } }
+      # Important: workers need time to finish in-flight Echidna runs
+      # (which can be 5+ minutes). Default 30s is too short.
+      terminationGracePeriodSeconds: 600
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: forensiq-worker
+  namespace: forensiq
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: forensiq-worker
+  minReplicas: 2
+  maxReplicas: 20
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 65 }
+  behavior:
+    scaleDown:
+      # Long cooldown — don't kill workers right after a queue spike
+      # because they may still be finishing in-flight audits
+      stabilizationWindowSeconds: 600
+
+---
+# Optional but strongly recommended: KEDA ScaledObject for queue-depth scaling.
+# Comment out if not running KEDA in the cluster.
+#
+# apiVersion: keda.sh/v1alpha1
+# kind: ScaledObject
+# metadata:
+#   name: forensiq-worker-queue
+#   namespace: forensiq
+# spec:
+#   scaleTargetRef:
+#     name: forensiq-worker
+#   minReplicaCount: 2
+#   maxReplicaCount: 20
+#   pollingInterval: 15
+#   cooldownPeriod: 300
+#   triggers:
+#     - type: redis
+#       metadata:
+#         address: forensiq-redis:6379
+#         listName: "bull:audits:waiting"
+#         listLength: "3"          # scale up if >3 jobs waiting per worker

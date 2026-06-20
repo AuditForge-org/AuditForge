@@ -1,0 +1,121 @@
+# FORENSIQ — full local stack
+#
+# Bring up:    docker compose up -d
+# Build tools: docker compose --profile build-tools build
+# Logs:        docker compose logs -f api worker
+#
+# Tool containers (slither, mythril, etc.) are built once and invoked
+# on-demand by the worker via `docker run`. They are NOT long-running
+# services here — the build-tools profile just builds the images.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: forensiq
+      POSTGRES_PASSWORD: forensiq
+      POSTGRES_DB: forensiq
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U forensiq"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports: ["6379:6379"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgres://forensiq:forensiq@postgres:5432/forensiq
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      ETHERSCAN_API_KEY: ${ETHERSCAN_API_KEY}
+      GITHUB_TOKEN: ${GITHUB_TOKEN}
+    command: ["node", "dist/server.js"]
+    ports: ["3000:3000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.app
+    environment:
+      NODE_ENV: production
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgres://forensiq:forensiq@postgres:5432/forensiq
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      WORKER_CONCURRENCY: 2
+    command: ["node", "dist/worker.js"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+    # Worker needs docker socket to spawn tool containers
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  # ─── Tool images (build-only) ──────────────────────────────────────
+  slither-img:
+    image: forensiq/slither:0.10.4
+    build:
+      context: ./docker
+      dockerfile: slither.Dockerfile
+    profiles: [build-tools]
+    command: ["--version"]
+
+  mythril-img:
+    image: forensiq/mythril:0.24.8
+    build:
+      context: ./docker
+      dockerfile: mythril.Dockerfile
+    profiles: [build-tools]
+    command: ["version"]
+
+  aderyn-img:
+    image: forensiq/aderyn:0.5.5
+    build:
+      context: ./docker
+      dockerfile: aderyn.Dockerfile
+    profiles: [build-tools]
+    command: ["--version"]
+
+  semgrep-img:
+    image: forensiq/semgrep:1.85
+    build:
+      context: ./docker
+      dockerfile: semgrep.Dockerfile
+    profiles: [build-tools]
+    command: ["--version"]
+
+  solhint-img:
+    image: forensiq/solhint:5.0.5
+    build:
+      context: ./docker
+      dockerfile: solhint.Dockerfile
+    profiles: [build-tools]
+    command: ["--version"]
+
+  echidna-img:
+    image: forensiq/echidna:2.2.4
+    build:
+      context: ./docker
+      dockerfile: echidna.Dockerfile
+    profiles: [build-tools]
+    command: ["--version"]
+
+volumes:
+  postgres_data:

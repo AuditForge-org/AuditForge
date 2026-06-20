@@ -1,0 +1,33 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# KEDA ScaledObject — scales worker pods on BullMQ queue depth in Redis.
+# Requires the KEDA operator to be installed in the cluster.
+#
+# Why queue depth and not CPU: audit jobs are long (1-10 min) and have
+# variable CPU usage as different tools dominate at different stages.
+# Queue depth is the leading indicator we actually care about.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: forensiq-worker
+  namespace: forensiq
+spec:
+  scaleTargetRef:
+    kind: Deployment
+    name: forensiq-worker
+  minReplicaCount: 2
+  maxReplicaCount: 30
+  # Don't scale down for 5 minutes after a job clears — avoids thrashing
+  # when bursts come in waves.
+  cooldownPeriod: 300
+  pollingInterval: 30
+  triggers:
+    - type: redis
+      metadata:
+        # Connection details. The TriggerAuthentication keeps the password
+        # out of the manifest. Set up `redis-auth` per
+        # https://keda.sh/docs/scalers/redis-lists/
+        address: redis.forensiq.svc.cluster.local:6379
+        # BullMQ keys its waiting list as `bull:<queue>:wait`. Scale when
+        # there are more than 4 jobs waiting per worker pod.
+        listName: "bull:audits:wait"
+        listLength: "4"

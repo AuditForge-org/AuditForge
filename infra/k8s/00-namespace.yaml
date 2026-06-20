@@ -1,0 +1,20 @@
+# Forensiq namespace
+#
+# All resources live here. Separate from `kube-system`, `default`, and any
+# other shared workloads. The default ServiceAccount in this namespace has
+# no special permissions; we create a more privileged SA only for the
+# engine runner (which creates Jobs in this namespace).
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: forensiq
+  labels:
+    app.kubernetes.io/name: forensiq
+    # Enforce pod security standards. 'restricted' is the strictest tier
+    # in Kubernetes 1.25+ and matches what we want: no privileged pods,
+    # no host paths, no runAsRoot, etc.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted
+    pod-security.kubernetes.io/audit: restricted
