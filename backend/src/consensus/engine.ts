@@ -100,6 +100,38 @@ function maxSeverity(sevs: Severity[]): Severity {
 }
 
 /**
+ * Re-classify linter / pure-style findings so a cosmetic rule can never
+ * masquerade as a security severity. Solhint (category 'lint') is a style
+ * tool — its findings are capped at 'low', and known cosmetic rules drop to
+ * 'info'. This keeps things like "no-inline-assembly" out of the medium/high
+ * tiers, where they badly distort the score.
+ */
+const STYLE_RULES = new Set([
+  'no-inline-assembly', 'reason-string', 'no-empty-blocks', 'compiler-version',
+  'func-visibility', 'no-unused-vars', 'no-unused-import', 'imports-on-top',
+  'max-line-length', 'quotes', 'ordering', 'visibility-modifier-order',
+  'const-name-snakecase', 'contract-name-camelcase', 'var-name-mixedcase',
+  'func-name-mixedcase', 'event-name-camelcase', 'modifier-name-mixedcase',
+  'no-global-import', 'explicit-types', 'named-parameters-mapping',
+  'immutable-vars-naming', 'payable-fallback', 'not-rely-on-time', 'no-console',
+]);
+
+function normalizeSeverity(f: NormalizedFinding): Severity {
+  const id = (f.detectorId || '').toLowerCase();
+  const title = (f.title || '').toLowerCase();
+  if (STYLE_RULES.has(id) || title.includes('inline assembly') ||
+      title.includes('naming') || title.includes('compiler version') ||
+      title.includes('reason string')) {
+    return 'info';
+  }
+  // A linter is not a security scanner — never let solhint drive medium/high.
+  if ((f.category || '').toLowerCase() === 'lint' && SEVERITY_RANK[f.severity] > SEVERITY_RANK.low) {
+    return 'low';
+  }
+  return f.severity;
+}
+
+/**
  * Confidence derivation:
  *   3+ tools agree                  → high
  *   2 tools agree                   → high if both individually high, else medium
@@ -238,7 +270,7 @@ export function buildConsensus(
     }
 
     const primary = pickPrimary(cluster.findings);
-    const severity = maxSeverity(cluster.findings.map(f => f.severity));
+    const severity = maxSeverity(cluster.findings.map(normalizeSeverity));
     const swcId = cluster.findings.map(f => f.swcId).find(Boolean);
     const cweId = cluster.findings.map(f => f.cweId).find(Boolean);
 
@@ -276,50 +308,61 @@ export function buildConsensus(
 }
 
 /**
- * Score formula:
+ * Score formula — confidence-weighted and false-positive-resilient.
  *
- *   Each consensus finding contributes a penalty weighted by severity AND
- *   by tool agreement. Single-tool findings count less than multi-tool ones
- *   because they're more likely to be false positives.
+ *   penalty(finding) = base_weight[severity] × confidence_multiplier
  *
- *   penalty = base_weight[severity] × tool_multiplier
+ *   confidence_multiplier (how much we trust the finding is real):
+ *     1 engine:  0.20   ← single-engine findings are the dominant FP source,
+ *                          so they barely move the score; they're still SHOWN
+ *                          in the report for manual triage.
+ *     2 engines: 0.70
+ *     3+ engines: 1.00   ← independent agreement = trusted; full weight.
+ *     echidna:    1.00   ← a property counterexample is a proof, not a heuristic.
  *
- *   tool_multiplier:
- *     1 tool:  0.5
- *     2 tools: 1.0
- *     3 tools: 1.5
- *     4+:      2.0
+ *   Aggregation uses DIMINISHING RETURNS per (severity, category): the same
+ *   kind of issue repeated N times (e.g. one "centralization" note per admin
+ *   function) decays — the 1st counts fully, the 2nd ×0.55, the 3rd ×0.55², …
+ *   So a contract can't be tanked by a thousand identical low-severity notes,
+ *   while genuinely distinct issues each count.
+ *
+ * Net effect: one confirmed multi-engine critical (−35) hurts a lot; a pile of
+ * single-engine / lint / repeated-category noise barely registers.
  */
 const BASE_WEIGHTS: Record<Severity, number> = {
-  critical: 30,
-  high: 12,
-  medium: 4,
-  low: 1,
-  info: 0,
+  critical: 35,
+  high:     15,
+  medium:   5,
+  low:      1.5,
+  info:     0,
 };
+const DECAY = 0.55;
 
-function toolMultiplier(toolCount: number): number {
-  if (toolCount >= 4) return 2.0;
-  if (toolCount === 3) return 1.5;
-  if (toolCount === 2) return 1.0;
-  return 0.5;
-}
-
-/**
- * Echidna findings are proofs, not heuristics — treat them as if they had
- * 2-tool consensus for scoring purposes even when single-tool.
- */
-function multiplierForCluster(c: ConsensusFinding): number {
-  const hasEchidna = c.tools.includes('echidna');
-  if (hasEchidna && c.toolCount === 1) return 1.0;
-  return toolMultiplier(c.toolCount);
+function confidenceMultiplier(c: ConsensusFinding): number {
+  if (c.tools.includes('echidna')) return 1.0;   // counterexample = proof
+  if (c.toolCount >= 3) return 1.0;
+  if (c.toolCount === 2) return 0.7;
+  return 0.2;                                     // single engine → likely FP
 }
 
 export function calculateScore(consensus: ConsensusFinding[]): { score: number; grade: string } {
-  let penalty = 0;
+  // Bucket per-finding penalties by (severity, category) so repeats of the
+  // same kind of issue decay instead of summing linearly.
+  const groups = new Map<string, number[]>();
   for (const c of consensus) {
-    penalty += BASE_WEIGHTS[c.severity] * multiplierForCluster(c);
+    const w = BASE_WEIGHTS[c.severity] * confidenceMultiplier(c);
+    if (w <= 0) continue;
+    const key = `${c.severity}|${c.category}`;
+    const arr = groups.get(key);
+    if (arr) arr.push(w); else groups.set(key, [w]);
   }
+
+  let penalty = 0;
+  for (const weights of groups.values()) {
+    weights.sort((a, b) => b - a);
+    for (let k = 0; k < weights.length; k++) penalty += weights[k] * Math.pow(DECAY, k);
+  }
+
   const score = Math.max(0, Math.min(100, Math.round(100 - penalty)));
 
   let grade: string;

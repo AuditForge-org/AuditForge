@@ -127,11 +127,48 @@ describe('scoring', () => {
 
   it('grade thresholds work', () => {
     expect(calculateScore([]).grade).toMatch(/^A/);
-    // A single high-severity finding with 1 tool: 12 * 0.5 = 6 penalty → 94 → A
+    // A single-engine high: 15 × 0.2 = 3 penalty → 97 → A. Single-engine
+    // findings barely move the score (shown for triage, not trusted).
     const oneHigh = buildConsensus([
       f({ tool: 'slither', severity: 'high', line: 1 }),
     ]);
-    expect(calculateScore(oneHigh).score).toBe(94);
+    expect(calculateScore(oneHigh).score).toBe(97);
+  });
+});
+
+describe('scoring · false-positive resilience (the overhaul)', () => {
+  it('discounts a single-engine critical — one unconfirmed critical must not tank the score', () => {
+    const c = buildConsensus([
+      f({ tool: 'slither', severity: 'critical', line: 1, swcId: 'SWC-105', detectorId: 'arbitrary-send-eth' }),
+    ]);
+    expect(calculateScore(c).score).toBeGreaterThanOrEqual(88);   // 35 × 0.25 ≈ 9
+  });
+
+  it('still punishes a multi-engine confirmed critical hard', () => {
+    const c = buildConsensus([
+      f({ tool: 'slither', severity: 'critical', line: 1, swcId: 'SWC-107', detectorId: 'reentrancy-eth' }),
+      f({ tool: 'mythril', severity: 'critical', line: 1, swcId: 'SWC-107' }),
+      f({ tool: 'aderyn',  severity: 'critical', line: 1, swcId: 'SWC-107', detectorId: 'reentrancy-state-change' }),
+    ]);
+    expect(calculateScore(c).score).toBeLessThanOrEqual(70);      // −35
+  });
+
+  it('does not let a pile of repeated single-engine lows tank the score (diminishing returns)', () => {
+    const findings = [];
+    for (let i = 0; i < 80; i++) {
+      findings.push(f({ tool: 'aderyn', severity: 'low', line: i * 10, swcId: 'SWC-105', detectorId: 'centralization' }));
+    }
+    const c = buildConsensus(findings);
+    expect(c.length).toBeGreaterThan(40);                 // they don't all cluster
+    expect(calculateScore(c).score).toBeGreaterThan(92);  // …yet barely dent the score
+  });
+
+  it('treats linter/style findings (no-inline-assembly) as info, not a security severity', () => {
+    const c = buildConsensus([
+      f({ tool: 'solhint', severity: 'medium', line: 5, category: 'lint', detectorId: 'no-inline-assembly', title: 'No Inline Assembly' }),
+    ]);
+    expect(c[0].severity).toBe('info');
+    expect(calculateScore(c).score).toBe(100);
   });
 });
 
