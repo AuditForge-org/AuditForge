@@ -84,6 +84,9 @@ export function buildPdf(report: AuditReport): Promise<Buffer> {
 // ── COVER (dark, branded) ─────────────────────────────────────────────────
 function drawCover(doc: PDFKit.PDFDocument, report: AuditReport) {
   const t = tier(report.score);
+  // The cover is entirely absolute-positioned; drop the bottom margin so the
+  // bottom band (drawn below the content margin) doesn't trigger blank pages.
+  doc.page.margins.bottom = 0;
   doc.rect(0, 0, PAGE.w, PAGE.h).fill(BRAND.dark);
   // top accent
   doc.rect(0, 0, PAGE.w, 6).fill(t.color);
@@ -343,6 +346,7 @@ function drawFooters(doc: PDFKit.PDFDocument) {
   const total = range.count;
   for (let i = 1; i < total; i++) {            // skip cover (page 0)
     doc.switchToPage(range.start + i);
+    doc.page.margins.bottom = 0;               // footer sits below the content margin — don't spawn a page
     const y = PAGE.h - 40;
     doc.lineWidth(0.5).strokeColor(BRAND.line).moveTo(PAGE.m, y).lineTo(PAGE.w - PAGE.m, y).stroke();
     doc.fillColor(BRAND.greenDk).font('Helvetica-Bold').fontSize(8)
