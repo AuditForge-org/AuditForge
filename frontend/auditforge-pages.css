@@ -495,3 +495,35 @@
 .legal-body li:last-child { margin-bottom: 0; }
 .legal-body a { color: var(--amber); }
 .legal-body strong { color: var(--ink); font-weight: 600; }
+
+/* ============================================================
+   ENGINES PAGE
+   ============================================================ */
+.engines-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+.engine-card {
+  border: 1px solid var(--line-2); border-radius: var(--radius); background: var(--panel);
+  padding: 22px 24px 20px; display: flex; flex-direction: column;
+  transition: border-color .2s var(--ease), transform .2s var(--ease), box-shadow .2s var(--ease);
+}
+.engine-card:hover { border-color: var(--line-3); transform: translateY(-2px); box-shadow: 0 16px 36px -24px rgba(0,0,0,0.5); }
+.ec-top { display: flex; align-items: center; gap: 13px; }
+.ec-mark { flex-shrink: 0; width: 30px; height: 30px; }
+.ec-mark svg { width: 30px; height: 30px; }
+.ec-id { flex: 1; min-width: 0; }
+.ec-id h3 { margin: 0; font-family: var(--sans); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; color: var(--ink); }
+.ec-by { font-family: var(--mono); font-size: 10.5px; color: var(--ink-3); letter-spacing: 0.02em; }
+.ec-method { font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.14em; text-transform: uppercase; flex-shrink: 0; white-space: nowrap; }
+.ec-desc { color: var(--ink-2); font-size: 13.5px; line-height: 1.62; margin: 15px 0 16px; flex: 1; }
+.ec-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding-top: 14px; border-top: 1px solid var(--line); }
+.ec-tags { display: flex; gap: 7px; }
+.ec-tag { font-family: var(--mono); font-size: 10px; letter-spacing: 0.04em; color: var(--ink-3); border: 1px solid var(--line-2); border-radius: 6px; padding: 3px 8px; }
+.ec-links { display: flex; gap: 14px; }
+.ec-links a { font-family: var(--mono); font-size: 11.5px; letter-spacing: 0.02em; color: var(--amber); white-space: nowrap; }
+.ec-links a:hover { color: var(--amber-2); }
+.engines-note { text-align: center; max-width: 60ch; margin: 32px auto 0; color: var(--ink-3); font-size: 12.5px; line-height: 1.7; }
+.engines-note a { color: var(--amber); }
+
+@media (max-width: 760px) {
+  .engines-grid { grid-template-columns: 1fr; }
+  .ec-method { display: none; }
+}

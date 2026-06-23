@@ -344,45 +344,24 @@ function drawFinding(doc: PDFKit.PDFDocument, f: ConsensusFinding, n: number) {
   doc.moveDown(0.8);
 }
 
-// ── ENGINES & CREDITS ─────────────────────────────────────────────────────
+// ── ENGINES (compact list — full credits/links live on auditforge.org) ──────
 function drawEngines(doc: PDFKit.PDFDocument, report: AuditReport) {
   doc.addPage();
-  sectionHeader(doc, 'The engines & credits');
+  sectionHeader(doc, 'Engines');
   doc.fillColor(BRAND.muted).font('Helvetica').fontSize(9.5).text(
-    'Audit Forge is an orchestrator — it runs these independent, open-source security tools and reconciles their output by consensus. ' +
-    'All credit for the underlying analysis belongs to their authors; each tool is used under its own license (see the project NOTICE).',
+    'Audit Forge orchestrates these independent open-source tools and reconciles their output by consensus. ' +
+    'Full credit to their authors; each runs under its own license. Details and links: auditforge.org/#/engines',
     PAGE.m, doc.y, { width: CONTENT_W, lineGap: 2, paragraphGap: 12 }
   );
-  for (const e of ENGINES) drawEngineCard(doc, e, report);
-}
-
-function drawEngineCard(
-  doc: PDFKit.PDFDocument,
-  e: typeof ENGINES[number],
-  report: AuditReport,
-) {
-  if (doc.y > PAGE.h - PAGE.m - 116) doc.addPage();
-  const ran = report.toolsRun.includes(e.id as never);
-  const y0 = doc.y;
-
-  // name + method/version on one line
-  doc.fillColor(BRAND.ink).font('Helvetica-Bold').fontSize(13).text(e.name, PAGE.m, y0, { continued: true })
-     .fillColor(BRAND.muted).font('Helvetica').fontSize(9).text(`    ${e.method}  ·  v${e.version}`, { continued: false });
-  // credit line
-  doc.x = PAGE.m;
-  doc.fillColor(ran ? BRAND.greenDk : BRAND.faint).font('Helvetica').fontSize(8.5)
-     .text(`Created by ${e.org}${ran ? '   ·   ran in this audit' : '   ·   not run in this audit'}`, PAGE.m, doc.y + 1, { width: CONTENT_W });
-  // blurb
-  doc.fillColor('#33373D').font('Helvetica').fontSize(9.5)
-     .text(safe(e.blurb), PAGE.m, doc.y + 4, { width: CONTENT_W, lineGap: 1.5 });
-  // clickable link back to the project
-  doc.fillColor(BRAND.greenDk).font('Helvetica').fontSize(9)
-     .text(e.url, PAGE.m, doc.y + 3, { width: CONTENT_W, link: e.url, underline: true });
-
-  doc.moveDown(0.6);
-  doc.lineWidth(0.5).strokeColor(BRAND.line).moveTo(PAGE.m, doc.y).lineTo(PAGE.w - PAGE.m, doc.y).stroke();
-  doc.moveDown(0.8);
-  doc.x = PAGE.m;
+  for (const e of ENGINES) {
+    if (doc.y > PAGE.h - PAGE.m - 30) doc.addPage();
+    const ran = report.toolsRun.includes(e.id as never);
+    doc.fillColor(BRAND.ink).font('Helvetica-Bold').fontSize(10.5).text(e.name, PAGE.m, doc.y, { continued: true })
+       .fillColor(BRAND.muted).font('Helvetica').fontSize(9)
+       .text(`    ${e.method}  ·  v${e.version}  ·  by ${e.org}${ran ? '' : '  ·  not run'}`, { continued: false });
+    doc.x = PAGE.m;
+    doc.moveDown(0.7);
+  }
 }
 
 // ── APPENDIX ──────────────────────────────────────────────────────────────

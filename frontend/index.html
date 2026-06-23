@@ -44,8 +44,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./auditforge.css">
-<link rel="stylesheet" href="./auditforge-pages.css">
+<link rel="stylesheet" href="./auditforge.css?v=20260621">
+<link rel="stylesheet" href="./auditforge-pages.css?v=20260621">
 <style>
   /* ── SPA-only helpers (themed via design tokens) ── */
   #view { position: relative; z-index: 1; }
@@ -147,6 +147,7 @@
     </a>
     <nav class="nav">
       <a href="#/scan"     data-route="/scan">Scan</a>
+      <a href="#/engines"  data-route="/engines">Engines</a>
       <a href="#/registry" data-route="/registry">Registry</a>
     </nav>
     <div class="right">
@@ -183,6 +184,7 @@
       <div class="col">
         <h4>Product</h4>
         <a href="#/scan">Run a scan</a>
+        <a href="#/engines">The engines</a>
         <a href="#/registry">Audit registry</a>
       </div>
       <div class="col">
@@ -210,9 +212,9 @@
 <div class="toast" id="toast"></div>
 
 <!-- App scripts -->
-<script src="./api.js"></script>
-<script src="./auditforge.js"></script>
-<script src="./views.js"></script>
-<script src="./app.js"></script>
+<script src="./api.js?v=20260621"></script>
+<script src="./auditforge.js?v=20260621"></script>
+<script src="./views.js?v=20260621"></script>
+<script src="./app.js?v=20260621"></script>
 </body>
 </html>

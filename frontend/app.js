@@ -13,6 +13,7 @@
     { match: /^\/scan$/,             view: 'scan' },
     { match: /^\/report\/([\w-]+)$/, view: 'report',   params: m => ({ id: m[1] }) },
     { match: /^\/registry$/,         view: 'registry' },
+    { match: /^\/engines$/,          view: 'engines' },
     { match: /^\/watch$/,            view: 'watch' },
     { match: /^\/runs\/([\w-]+)$/,   view: 'runs',     params: m => ({ id: m[1] }) },
     { match: /^\/install$/,          view: 'install' },

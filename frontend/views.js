@@ -974,5 +974,66 @@ window.Views = (function () {
       body);
   }
 
-  return { scan, report, registry, watch, runs, install, terms, privacy, toast };
+  // ════════════════════════════════════════════════════════════════
+  // ENGINES — the toolchain, with credits + links
+  // ════════════════════════════════════════════════════════════════
+  const ENGINE_INFO = [
+    { name: 'Slither', org: 'Trail of Bits', method: 'Static analysis', mcolor: 'var(--c-static)', license: 'AGPL-3.0', ver: '0.10.4',
+      repo: 'https://github.com/crytic/slither', site: 'https://www.trailofbits.com',
+      blurb: 'The de-facto-standard static analyzer for Solidity — around 90 built-in vulnerability detectors plus a powerful API for custom analyses. Fast, battle-tested, and the backbone of most automated smart-contract reviews.' },
+    { name: 'Mythril', org: 'Consensys Diligence', method: 'Symbolic execution', mcolor: 'var(--c-symbolic)', license: 'MIT', ver: '0.24.8',
+      repo: 'https://github.com/Consensys/mythril', site: 'https://consensys.io/diligence',
+      blurb: 'Symbolically executes EVM bytecode and uses SMT solving to reason about many reachable program states at once — surfacing reentrancy, integer bugs and unprotected operations that pure pattern-matchers miss.' },
+    { name: 'Aderyn', org: 'Cyfrin', method: 'AST analysis', mcolor: 'var(--c-static)', license: 'MIT', ver: '0.5.5',
+      repo: 'https://github.com/Cyfrin/aderyn', site: 'https://www.cyfrin.io',
+      blurb: 'A fast, modern Rust-based AST analyzer. It walks the Solidity abstract syntax tree to surface vulnerabilities and code-quality issues with clean, readable output — a superb newer addition to the ecosystem.' },
+    { name: 'Semgrep', org: 'Semgrep, Inc.', method: 'Pattern matching', mcolor: 'var(--c-pattern)', license: 'LGPL-2.1', ver: '1.85',
+      repo: 'https://github.com/semgrep/semgrep', site: 'https://semgrep.dev',
+      blurb: 'A language-aware, semantic pattern scanner. Audit Forge runs the community smart-contract ruleset (p/smart-contracts) to catch known anti-patterns by code structure rather than raw text.' },
+    { name: 'Solhint', org: 'Protofire', method: 'Linting', mcolor: 'var(--c-linter)', license: 'MIT', ver: '5.0.5',
+      repo: 'https://github.com/protofire/solhint', site: 'https://protofire.io',
+      blurb: 'The most widely used Solidity linter, covering both security best-practices and style conventions. Audit Forge treats its purely-stylistic rules as informational and weights its findings conservatively.' },
+    { name: 'Echidna', org: 'Trail of Bits', method: 'Property fuzzing', mcolor: 'var(--c-fuzzing)', license: 'AGPL-3.0', ver: '2.2.4',
+      repo: 'https://github.com/crytic/echidna', site: 'https://www.trailofbits.com',
+      blurb: 'A sophisticated property-based fuzzer for the EVM. You declare invariants; Echidna generates transaction sequences to try to break them — a counterexample is a proof of a violation, not a heuristic. Opt-in (slower).' },
+  ];
+
+  function engines(root) {
+    const card = (e) => `
+      <article class="engine-card reveal">
+        <div class="ec-top">
+          <span class="ec-mark" style="color:${e.mcolor}">
+            <svg viewBox="0 0 32 32" fill="none"><path d="M16 3 L29 16 L16 29 L3 16 Z" stroke="currentColor" stroke-width="1.6"></path><path d="M16 10 L22 16 L16 22 L10 16 Z" fill="currentColor" fill-opacity="0.18" stroke="currentColor" stroke-width="1.3"></path></svg>
+          </span>
+          <div class="ec-id"><h3>${escapeHtml(e.name)}</h3><span class="ec-by">by ${escapeHtml(e.org)}</span></div>
+          <span class="ec-method" style="color:${e.mcolor}">${escapeHtml(e.method)}</span>
+        </div>
+        <p class="ec-desc">${escapeHtml(e.blurb)}</p>
+        <div class="ec-foot">
+          <div class="ec-tags"><span class="ec-tag">v${escapeHtml(e.ver)}</span><span class="ec-tag">${escapeHtml(e.license)}</span></div>
+          <div class="ec-links">
+            <a href="${e.repo}" target="_blank" rel="noopener noreferrer">Repository ↗</a>
+            <a href="${e.site}" target="_blank" rel="noopener noreferrer">Website ↗</a>
+          </div>
+        </div>
+      </article>`;
+    root.innerHTML = `
+<section class="page-hero">
+  <div class="wrap">
+    <div class="reveal" style="max-width:780px">
+      <span class="eyebrow">The toolchain</span>
+      <h1>Six engines. <em>One verdict.</em></h1>
+      <p class="lede">Audit Forge doesn't reinvent analysis — it orchestrates the best open-source security tools in the ecosystem and reconciles their findings by consensus. Full credit goes to their authors; each runs in an isolated, network-disabled sandbox under its own license.</p>
+    </div>
+  </div>
+</section>
+<section class="page-section">
+  <div class="wrap">
+    <div class="engines-grid">${ENGINE_INFO.map(card).join('')}</div>
+    <p class="engines-note">Audit Forge is an orchestration + consensus layer over these tools, and is itself <a href="https://github.com/AuditForge-org/AuditForge" target="_blank" rel="noopener noreferrer">open source (AGPL-3.0)</a>. The tools are independent projects; no affiliation or endorsement is implied.</p>
+  </div>
+</section>`;
+  }
+
+  return { scan, report, registry, watch, runs, install, terms, privacy, engines, toast };
 })();
