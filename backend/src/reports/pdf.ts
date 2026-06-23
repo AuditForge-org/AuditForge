@@ -45,8 +45,54 @@ function contractName(report: AuditReport): string {
   let raw = (s.contractName || s.label || '').replace(/^github:/i, '');
   if (!raw || /^paste/i.test(raw) || raw === 'pasted-source') return 'Submitted contract';
   if (raw.includes('/')) raw = raw.split('/').filter(Boolean).pop() || raw;
-  return raw.length > 42 ? raw.slice(0, 41) + '…' : raw;
+  return raw.length > 42 ? raw.slice(0, 41) + '...' : raw;
 }
+
+/**
+ * Make tool-output text safe + tidy for PDFKit's WinAnsi (Helvetica) encoding:
+ * tabs → spaces (PDFKit handles tabs poorly), common unicode → ASCII, control
+ * chars stripped, and anything still outside WinAnsi dropped so nothing renders
+ * as a garbled glyph.
+ */
+function safe(s: string | undefined | null): string {
+  if (!s) return '';
+  return String(s)
+    .replace(/\r\n?/g, '\n')
+    .replace(/\t/g, '  ')
+    .replace(/[‘’‚‛]/g, "'")
+    .replace(/[“”„‟]/g, '"')
+    .replace(/[–—―]/g, '-')
+    .replace(/…/g, '...')
+    .replace(/[•●▪·]/g, '-')
+    .replace(/≥/g, '>=').replace(/≤/g, '<=').replace(/≠/g, '!=')
+    .replace(/[→➔➤]/g, '->')
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/[^\n\x20-\x7E -ÿ]/g, '')
+    .trim();
+}
+
+/** Engine roster — credits, method, and a link back to each project. */
+const ENGINES: Array<{ id: string; name: string; org: string; method: string; version: string; url: string; blurb: string }> = [
+  { id: 'slither', name: 'Slither', org: 'Trail of Bits', method: 'Static analysis', version: '0.10.4',
+    url: 'https://github.com/crytic/slither',
+    blurb: 'The de-facto-standard static analyzer for Solidity — roughly 90 built-in vulnerability detectors plus a powerful API for custom analyses. Fast, battle-tested, and the backbone of most automated smart-contract reviews.' },
+  { id: 'mythril', name: 'Mythril', org: 'Consensys Diligence', method: 'Symbolic execution', version: '0.24.8',
+    url: 'https://github.com/Consensys/mythril',
+    blurb: 'Symbolically executes EVM bytecode and uses SMT solving to reason about many reachable program states at once — surfacing issues like reentrancy, integer bugs, and unprotected operations that pure pattern-matchers miss.' },
+  { id: 'aderyn', name: 'Aderyn', org: 'Cyfrin', method: 'AST analysis', version: '0.5.5',
+    url: 'https://github.com/Cyfrin/aderyn',
+    blurb: 'A fast, modern, Rust-based AST analyzer. It walks the Solidity abstract syntax tree to surface vulnerabilities and code-quality issues with clean, readable output — an excellent newer addition to the ecosystem.' },
+  { id: 'semgrep', name: 'Semgrep', org: 'Semgrep, Inc.', method: 'Pattern matching', version: '1.85',
+    url: 'https://semgrep.dev',
+    blurb: 'A language-aware, semantic pattern scanner. Audit Forge runs the community smart-contract ruleset (p/smart-contracts) to catch known anti-patterns by code structure rather than raw text.' },
+  { id: 'solhint', name: 'Solhint', org: 'Protofire', method: 'Linting', version: '5.0.5',
+    url: 'https://github.com/protofire/solhint',
+    blurb: 'The most widely used Solidity linter, covering both security best-practices and style conventions. Audit Forge treats its purely-stylistic rules as informational and weights its findings conservatively.' },
+  { id: 'echidna', name: 'Echidna', org: 'Trail of Bits', method: 'Property fuzzing', version: '2.2.4',
+    url: 'https://github.com/crytic/echidna',
+    blurb: 'A sophisticated property-based fuzzer for the EVM. You declare invariants; Echidna generates transaction sequences to try to break them. A counterexample is a proof of a violation, not a heuristic. Opt-in (slower).' },
+];
 
 const PAGE = { w: 612, h: 792, m: 56 };           // LETTER
 const CONTENT_W = PAGE.w - PAGE.m * 2;
@@ -74,6 +120,7 @@ export function buildPdf(report: AuditReport): Promise<Buffer> {
     drawSummary(doc, report);
     if (report.aiBrief) drawBrief(doc, report);
     drawFindings(doc, report);
+    drawEngines(doc, report);
     drawAppendix(doc, report);
     drawFooters(doc);   // page numbers + auditforge.org on every non-cover page
 
@@ -222,7 +269,7 @@ function drawBrief(doc: PDFKit.PDFDocument, report: AuditReport) {
      .text('AI-generated synthesis of the engine output. Review against the findings below.', { width: CONTENT_W });
   doc.moveDown(0.6);
   doc.fillColor(BRAND.ink).font('Helvetica').fontSize(10.5)
-     .text(report.aiBrief || '', { width: CONTENT_W, lineGap: 2.5, paragraphGap: 8 });
+     .text(safe(report.aiBrief), { width: CONTENT_W, lineGap: 2.5, paragraphGap: 8 });
 }
 
 // ── FINDINGS ──────────────────────────────────────────────────────────────
@@ -258,9 +305,10 @@ function drawFinding(doc: PDFKit.PDFDocument, f: ConsensusFinding, n: number) {
      .text(f.severity.toUpperCase(), PAGE.m, y0 + 4.5, { width: chipW, align: 'center', lineBreak: false });
 
   const titleX = PAGE.m + chipW + 12, titleW = CONTENT_W - chipW - 12;
+  const title = `${n}. ${safe(f.title) || 'Finding'}`;
   doc.fillColor(BRAND.ink).font('Helvetica-Bold').fontSize(12);
-  const titleH = doc.heightOfString(`${n}. ${f.title}`, { width: titleW });
-  doc.text(`${n}. ${f.title}`, titleX, y0, { width: titleW });
+  const titleH = doc.heightOfString(title, { width: titleW });
+  doc.text(title, titleX, y0, { width: titleW });
 
   // move below the taller of chip / title, then flow the rest
   doc.x = PAGE.m;
@@ -275,7 +323,7 @@ function drawFinding(doc: PDFKit.PDFDocument, f: ConsensusFinding, n: number) {
   // description
   doc.moveDown(0.35);
   doc.fillColor('#33373D').font('Helvetica').fontSize(9.5)
-     .text(f.description || '', PAGE.m, doc.y, { width: CONTENT_W, lineGap: 1.5, paragraphGap: 3 });
+     .text(safe(f.description), PAGE.m, doc.y, { width: CONTENT_W, lineGap: 1.5, paragraphGap: 3 });
 
   if (f.severityDisagreement && f.severityDisagreement.notes) {
     doc.fillColor('#7747D2').font('Helvetica-Oblique').fontSize(8.5)
@@ -287,7 +335,7 @@ function drawFinding(doc: PDFKit.PDFDocument, f: ConsensusFinding, n: number) {
     doc.fillColor(BRAND.greenDk).font('Helvetica-Bold').fontSize(8)
        .text('RECOMMENDATION', PAGE.m, doc.y, { characterSpacing: 1, lineBreak: false });
     doc.fillColor('#33373D').font('Helvetica').fontSize(9.5)
-       .text(f.recommendation, PAGE.m, doc.y + 1, { width: CONTENT_W, lineGap: 1.5 });
+       .text(safe(f.recommendation), PAGE.m, doc.y + 1, { width: CONTENT_W, lineGap: 1.5 });
   }
 
   // divider
@@ -296,23 +344,51 @@ function drawFinding(doc: PDFKit.PDFDocument, f: ConsensusFinding, n: number) {
   doc.moveDown(0.8);
 }
 
+// ── ENGINES & CREDITS ─────────────────────────────────────────────────────
+function drawEngines(doc: PDFKit.PDFDocument, report: AuditReport) {
+  doc.addPage();
+  sectionHeader(doc, 'The engines & credits');
+  doc.fillColor(BRAND.muted).font('Helvetica').fontSize(9.5).text(
+    'Audit Forge is an orchestrator — it runs these independent, open-source security tools and reconciles their output by consensus. ' +
+    'All credit for the underlying analysis belongs to their authors; each tool is used under its own license (see the project NOTICE).',
+    PAGE.m, doc.y, { width: CONTENT_W, lineGap: 2, paragraphGap: 12 }
+  );
+  for (const e of ENGINES) drawEngineCard(doc, e, report);
+}
+
+function drawEngineCard(
+  doc: PDFKit.PDFDocument,
+  e: typeof ENGINES[number],
+  report: AuditReport,
+) {
+  if (doc.y > PAGE.h - PAGE.m - 116) doc.addPage();
+  const ran = report.toolsRun.includes(e.id as never);
+  const y0 = doc.y;
+
+  // name + method/version on one line
+  doc.fillColor(BRAND.ink).font('Helvetica-Bold').fontSize(13).text(e.name, PAGE.m, y0, { continued: true })
+     .fillColor(BRAND.muted).font('Helvetica').fontSize(9).text(`    ${e.method}  ·  v${e.version}`, { continued: false });
+  // credit line
+  doc.x = PAGE.m;
+  doc.fillColor(ran ? BRAND.greenDk : BRAND.faint).font('Helvetica').fontSize(8.5)
+     .text(`Created by ${e.org}${ran ? '   ·   ran in this audit' : '   ·   not run in this audit'}`, PAGE.m, doc.y + 1, { width: CONTENT_W });
+  // blurb
+  doc.fillColor('#33373D').font('Helvetica').fontSize(9.5)
+     .text(safe(e.blurb), PAGE.m, doc.y + 4, { width: CONTENT_W, lineGap: 1.5 });
+  // clickable link back to the project
+  doc.fillColor(BRAND.greenDk).font('Helvetica').fontSize(9)
+     .text(e.url, PAGE.m, doc.y + 3, { width: CONTENT_W, link: e.url, underline: true });
+
+  doc.moveDown(0.6);
+  doc.lineWidth(0.5).strokeColor(BRAND.line).moveTo(PAGE.m, doc.y).lineTo(PAGE.w - PAGE.m, doc.y).stroke();
+  doc.moveDown(0.8);
+  doc.x = PAGE.m;
+}
+
 // ── APPENDIX ──────────────────────────────────────────────────────────────
 function drawAppendix(doc: PDFKit.PDFDocument, report: AuditReport) {
   doc.addPage();
-  sectionHeader(doc, 'Appendix A — Engines');
-  doc.fillColor(BRAND.ink).font('Courier').fontSize(9.5);
-  const versions = [
-    'slither   0.10.4   (Trail of Bits · static analysis)',
-    'mythril   0.24.8   (Consensys · symbolic execution)',
-    'aderyn    0.5.5    (Cyfrin · AST analysis)',
-    'semgrep   1.85     (p/smart-contracts ruleset)',
-    'solhint   5.0.5    (linting / style)',
-    'echidna   2.2.4    (Trail of Bits · property fuzzing, opt-in)',
-  ];
-  versions.forEach(v => doc.text(v, { width: CONTENT_W }));
-
-  doc.moveDown(1.2);
-  sectionHeader(doc, 'Appendix B — Methodology');
+  sectionHeader(doc, 'Methodology');
   doc.fillColor(BRAND.ink).font('Helvetica').fontSize(10).text(
     'Each engine ran in an isolated, network-disabled, resource-capped Docker sandbox. The contract was analyzed statically and symbolically in isolation — no deployment-time or runtime context was simulated. ' +
     'Findings from each engine were normalized to a common schema (SWC IDs as the cross-reference taxonomy) and clustered by category, file, and line proximity (±3 lines). A finding\'s "engine count" indicates how many independent engines agreed; the 0–100 score is a severity-weighted roll-up that gives more weight to multi-engine consensus.',
