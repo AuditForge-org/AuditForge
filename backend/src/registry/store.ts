@@ -208,6 +208,15 @@ export async function getLeaderboard(filters: LeaderboardFilters = {}): Promise<
   return { entries: res.rows.map(rowToEntry), total };
 }
 
+/** True if this report has been published to the public registry. */
+export async function isReportPublished(reportId: string): Promise<boolean> {
+  const res = await pool.query(
+    `SELECT 1 FROM registry_entries WHERE report_id = $1 LIMIT 1`,
+    [reportId]
+  );
+  return res.rowCount! > 0;
+}
+
 export async function getEntryByAddress(chain: string, address: string): Promise<RegistryEntry | null> {
   const res = await pool.query(
     `SELECT * FROM registry_entries

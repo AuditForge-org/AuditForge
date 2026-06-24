@@ -26,6 +26,7 @@ import { fetchEtherscanSource } from './source/etherscan';
 import { fetchGithubSource } from './source/github';
 import { getReport, listReports } from './db/reports';
 import { renderBadgeSvg, notFoundBadgeSvg, renderOgShell, renderOgPng } from './share/og';
+import { isReportPublished } from './registry/store';
 import { buildPdf } from './reports/pdf';
 import watchRoutes from './routes/watch';
 import registryRoutes from './routes/registry';
@@ -164,13 +165,14 @@ app.get('/badge/:id', asyncHandler(async (req, res) => {
   res.send(report ? renderBadgeSvg(report) : notFoundBadgeSvg());
 }));
 
-/** OG/Twitter unfurl shell — bounces humans to the hash-routed report. */
+/** Server-rendered, crawlable report page. Indexed only when published. */
 app.get('/r/:id', asyncHandler(async (req, res) => {
   const report = await safeGetReport(req.params.id);
   const origin = process.env.PUBLIC_URL || `https://${req.headers.host || 'auditforge.org'}`;
+  const published = report ? await isReportPublished(req.params.id).catch(() => false) : false;
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=300');
-  res.send(renderOgShell(report, req.params.id, origin));
+  res.send(renderOgShell(report, req.params.id, origin, published));
 }));
 
 /** Per-report OG card PNG (score baked in). e.g. /og/<id>.png */

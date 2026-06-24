@@ -202,58 +202,79 @@ export function renderOgPng(report: AuditReport): Buffer {
   return Buffer.from(resvg.render().asPng());
 }
 
+function sevCountsAll(report: AuditReport): Record<string, number> {
+  const c: Record<string, number> = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
+  for (const f of report.consensusFindings || []) if (f.severity in c) c[f.severity]++;
+  return c;
+}
+
+const RP_TOPBAR = `<header class="topbar"><div class="wrap"><a href="/" class="brand"><span class="mark"><svg viewBox="0 0 32 32" fill="none"><path d="M16 2 L29 16 L16 30 L3 16 Z" stroke="currentColor" stroke-width="1.6"></path><path d="M16 9 L23 16 L16 23 L9 16 Z" fill="currentColor" fill-opacity="0.16" stroke="currentColor" stroke-width="1.4"></path></svg></span><span class="name">AUDIT FORGE<small>MULTI-ENGINE AUDIT CONSOLE</small></span></a><nav class="nav"><a href="/#/scan">Scan</a><a href="/#/engines">Engines</a><a href="/#/registry">Registry</a></nav></div></header>`;
+const RP_FOOTER = `<footer class="footer"><div class="wrap"><div class="footer-base"><span>Audit Forge automates the first pass — it is <b>not</b> a substitute for a professional manual audit. Provided without warranty.</span><span class="legal-links"><a href="/#/terms">Terms</a> · <a href="/#/privacy">Privacy</a> · <a href="/#/engines">Engines</a></span></div></div></footer>`;
+const RP_CSS = `.rp{max-width:880px;margin:0 auto;padding:48px 28px 60px}.rp-crumb{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px}.rp-crumb a{color:var(--amber)}.rp h1{font-family:var(--sans);font-weight:700;letter-spacing:-.02em;font-size:clamp(30px,4vw,44px);margin:0 0 6px;color:var(--ink)}.rp-src{font-family:var(--mono);font-size:12.5px;color:var(--ink-3);margin:0 0 24px;overflow-wrap:anywhere}.rp-score{display:flex;align-items:baseline;gap:18px;margin:0 0 22px;flex-wrap:wrap}.rp-num{font-family:var(--sans);font-weight:700;font-size:64px;line-height:1;color:var(--tc)}.rp-num small{font-size:20px;color:var(--ink-4);font-weight:500}.rp-grade{font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--tc)}.rp-strip{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--line-2);border-radius:12px;overflow:hidden;margin-bottom:30px}.rp-strip>div{padding:14px;text-align:center;border-right:1px solid var(--line)}.rp-strip>div:last-child{border-right:0}.rp-strip .n{display:block;font-family:var(--sans);font-weight:700;font-size:24px;color:var(--ink)}.rp-strip .l{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}.rp h2{font-family:var(--sans);font-weight:700;font-size:22px;margin:34px 0 14px;color:var(--ink)}.rp-brief p{color:var(--ink-2);font-size:15px;line-height:1.7}.rp-f{border:1px solid var(--line-2);border-radius:12px;padding:16px 18px;margin-bottom:12px;background:var(--panel)}.rp-fh{display:flex;align-items:center;gap:12px}.rp-fh h3{margin:0;font-size:15px;font-weight:600;color:var(--ink)}.rp-sev{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;padding:3px 8px;border-radius:5px;color:#fff;flex-shrink:0}.rp-sev.s-critical{background:#dc2626}.rp-sev.s-high{background:#ea580c}.rp-sev.s-medium{background:#d97706}.rp-sev.s-low{background:#0891b2}.rp-sev.s-info{background:#6b7280}.rp-m{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin:6px 0 0}.rp-f p{color:var(--ink-2);font-size:13.5px;line-height:1.6;margin:8px 0 0}.rp-cta{margin:34px 0 18px;display:flex;gap:12px;flex-wrap:wrap}.rp-disc{color:var(--ink-3);font-size:12px}.rp-disc a{color:var(--amber)}@media(max-width:560px){.rp-strip{grid-template-columns:repeat(2,1fr)}}`;
+
 /**
- * OG/Twitter-card shell for /r/:id. Crawlers read the meta; humans are bounced
- * to the hash-routed report. `report` may be null (unknown id) — then we serve
- * the generic site card and redirect home.
+ * Server-rendered report page for /r/:id — a REAL, crawlable HTML page (not a
+ * redirect shell). Indexed only when the report has been published to the
+ * registry, so private shared reports stay out of search.
  */
-export function renderOgShell(report: AuditReport | null, id: string, origin: string): string {
-  // Escaped because `origin` can fall back to the (untrusted) Host header.
-  // PUBLIC_URL is set in prod so this is normally a constant, but escape anyway.
-  const cover = escapeXml(`${origin}/og-cover.png`);
+export function renderOgShell(
+  report: AuditReport | null,
+  id: string,
+  origin: string,
+  published = false,
+): string {
+  const css = `<link rel="stylesheet" href="${escapeXml(origin)}/auditforge.css?v=20260621b"><link rel="stylesheet" href="${escapeXml(origin)}/auditforge-pages.css?v=20260621b"><style>${RP_CSS}</style>`;
+  const head = (title: string, desc: string, robots: string, extra = '') =>
+    `<!DOCTYPE html><html lang="en" data-theme="dark" data-accent="emerald" data-headline="sans"><head>` +
+    `<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">` +
+    `<title>${escapeXml(title)}</title><meta name="description" content="${escapeXml(desc)}">` +
+    `<meta name="robots" content="${robots}"><meta name="theme-color" content="#07080A">${extra}${css}</head>`;
+
   if (!report) {
-    return `<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">
-<title>Audit Forge — Multi-Engine Smart Contract Security Audit</title>
-<meta name="description" content="Six independent security engines, one reconciled verdict. Audit any Solidity contract free.">
-<meta property="og:title" content="Audit Forge — Multi-Engine Smart Contract Audit">
-<meta property="og:description" content="Six independent security engines, one reconciled verdict. Audit any Solidity contract free.">
-<meta property="og:image" content="${cover}"><meta name="twitter:card" content="summary_large_image">
-<script>location.replace('/#/scan');</script></head>
-<body><p><a href="/#/scan">Audit Forge — run a free scan →</a></p></body></html>`;
+    return head('Report not found — Audit Forge', 'This audit report could not be found.', 'noindex,follow') +
+      `<body>${RP_TOPBAR}<main class="rp"><h1>Report not found</h1><p class="rp-disc">This report doesn't exist or has expired. <a href="/#/scan">Run a new free scan →</a></p></main>${RP_FOOTER}</body></html>`;
   }
 
   const name = contractName(report);
-  const { critical, high } = severityCounts(report);
+  const counts = sevCountsAll(report);
   const engines = (report.toolsRun || []).length;
-  const title = `${name} — ${report.score}/100 on Audit Forge`;
-  const desc = `${name} scored ${report.score}/100 across ${engines} security engines on Audit Forge — ${critical} critical, ${high} high findings reconciled by consensus. Free multi-engine smart-contract audit.`;
+  const t = { color: cardTierColor(report.score), label: cardTierLabel(report.score) };
+  const title = `${name} — ${report.score}/100 Smart Contract Audit | Audit Forge`;
+  const desc = `${name} scored ${report.score}/100 across ${engines} security engines on Audit Forge — ${counts.critical} critical, ${counts.high} high findings reconciled by consensus. Free multi-engine smart-contract audit report.`;
   const url = `${origin}/r/${encodeURIComponent(id)}`;
   const hashUrl = `/#/report/${encodeURIComponent(id)}`;
-  // Per-report card (score baked in). Falls back to the static cover if rasterizing fails.
   const card = escapeXml(`${origin}/og/${encodeURIComponent(id)}.png`);
 
-  return `<!DOCTYPE html><html lang="en"><head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${escapeXml(title)}</title>
-<meta name="description" content="${escapeXml(desc)}">
-<link rel="canonical" href="${escapeXml(url)}">
-<meta property="og:type" content="website">
-<meta property="og:site_name" content="Audit Forge">
-<meta property="og:title" content="${escapeXml(name)} scored ${report.score}/100 on Audit Forge">
-<meta property="og:description" content="${escapeXml(desc)}">
-<meta property="og:url" content="${escapeXml(url)}">
-<meta property="og:image" content="${card}">
-<meta property="og:image:width" content="1200">
-<meta property="og:image:height" content="630">
-<meta name="twitter:card" content="summary_large_image">
-<meta name="twitter:title" content="${escapeXml(title)}">
-<meta name="twitter:description" content="${escapeXml(desc)}">
-<meta name="twitter:image" content="${card}">
-<script>location.replace(${JSON.stringify(hashUrl)});</script>
-</head>
-<body style="font-family:system-ui,sans-serif;background:#0b0d10;color:#eef0f2;padding:40px">
-<p>Audit Forge report for <b>${escapeXml(name)}</b> — security score <b>${report.score}/100</b>.</p>
-<p><a href="${escapeXml(hashUrl)}" style="color:#62a0f7">View the full report →</a></p>
-</body></html>`;
+  const og =
+    `<link rel="canonical" href="${escapeXml(url)}">` +
+    `<meta property="og:type" content="website"><meta property="og:site_name" content="Audit Forge">` +
+    `<meta property="og:title" content="${escapeXml(name)} scored ${report.score}/100 on Audit Forge">` +
+    `<meta property="og:description" content="${escapeXml(desc)}"><meta property="og:url" content="${escapeXml(url)}">` +
+    `<meta property="og:image" content="${card}"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">` +
+    `<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="${escapeXml(title)}"><meta name="twitter:description" content="${escapeXml(desc)}"><meta name="twitter:image" content="${card}">`;
+
+  const findingHtml = (report.consensusFindings || []).map(f => {
+    const sev = String(f.severity || 'info');
+    const loc = f.location ? `${f.location.file}:${f.location.startLine}` : '';
+    const d = escapeXml(String(f.description || '').replace(/\s+/g, ' ').trim().slice(0, 480));
+    return `<article class="rp-f"><div class="rp-fh"><span class="rp-sev s-${sev}">${sev.toUpperCase()}</span><h3>${escapeXml(f.title || 'Finding')}</h3></div>` +
+      `<div class="rp-m">${escapeXml(loc)}${f.swcId ? ' · ' + escapeXml(f.swcId) : ''} · ${f.toolCount} engine${f.toolCount === 1 ? '' : 's'}</div>${d ? `<p>${d}</p>` : ''}</article>`;
+  }).join('');
+
+  const strip = ['critical', 'high', 'medium', 'low', 'info']
+    .map(s => `<div><span class="n">${counts[s]}</span><span class="l">${s}</span></div>`).join('');
+
+  return head(title, desc, published ? 'index,follow' : 'noindex,follow', og) +
+`<body>${RP_TOPBAR}
+<main class="rp">
+  <div class="rp-crumb"><a href="/#/registry">Registry</a> / Report</div>
+  <h1>${escapeXml(name)}</h1>
+  <p class="rp-src">${escapeXml(report.source.label)} · ${engines} engines · audited by Audit Forge</p>
+  <div class="rp-score" style="--tc:${t.color}"><div class="rp-num">${report.score}<small>/100</small></div><div class="rp-grade">${escapeXml(report.grade)} · ${escapeXml(t.label)}</div></div>
+  <div class="rp-strip">${strip}</div>
+  ${report.aiBrief ? `<section class="rp-brief"><h2>Summary</h2><p>${escapeXml(String(report.aiBrief).replace(/\s+/g, ' ').trim().slice(0, 1400))}</p></section>` : ''}
+  <section><h2>${(report.consensusFindings || []).length} findings</h2>${findingHtml || '<p class="rp-disc">No consensus findings were identified.</p>'}</section>
+  <p class="rp-cta"><a class="btn btn-primary" href="${escapeXml(hashUrl)}">Open the interactive report →</a><a class="btn btn-ghost" href="/#/scan">Audit your own contract</a></p>
+  <p class="rp-disc">Automated multi-engine analysis by <a href="/">Audit Forge</a> — a free, open-source smart-contract security scanner. Not a substitute for a professional manual audit.</p>
+</main>${RP_FOOTER}</body></html>`;
 }
