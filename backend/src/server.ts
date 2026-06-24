@@ -25,8 +25,8 @@ import { randomUUID } from 'crypto';
 import { fetchEtherscanSource } from './source/etherscan';
 import { fetchGithubSource } from './source/github';
 import { getReport, listReports } from './db/reports';
-import { renderBadgeSvg, notFoundBadgeSvg, renderOgShell, renderOgPng } from './share/og';
-import { isReportPublished } from './registry/store';
+import { renderBadgeSvg, notFoundBadgeSvg, renderOgShell, renderOgPng, renderRegistryPage } from './share/og';
+import { isReportPublished, getLeaderboard } from './registry/store';
 import { buildPdf } from './reports/pdf';
 import watchRoutes from './routes/watch';
 import registryRoutes from './routes/registry';
@@ -173,6 +173,23 @@ app.get('/r/:id', asyncHandler(async (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'public, max-age=300');
   res.send(renderOgShell(report, req.params.id, origin, published));
+}));
+
+/** Server-rendered, crawlable registry list. Interactive view stays at /#/registry. */
+app.get('/registry', asyncHandler(async (req, res) => {
+  const origin = process.env.PUBLIC_URL || `https://${req.headers.host || 'auditforge.org'}`;
+  let entries: Awaited<ReturnType<typeof getLeaderboard>>['entries'] = [];
+  let total = 0;
+  try {
+    const board = await getLeaderboard({ sort: 'score_desc', limit: 100 });
+    entries = board.entries;
+    total = board.total;
+  } catch (e) {
+    log.warn('registry page leaderboard failed', { err: String(e) });
+  }
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'public, max-age=120');
+  res.send(renderRegistryPage(entries, total, origin));
 }));
 
 /** Per-report OG card PNG (score baked in). e.g. /og/<id>.png */
