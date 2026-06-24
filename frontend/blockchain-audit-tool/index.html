@@ -1,0 +1,147 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-accent="emerald" data-headline="sans">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Blockchain Audit Tool — Free Web3 Smart Contract Security Scanner | Audit Forge</title>
+<meta name="description" content="Audit Forge is a free, open-source blockchain audit tool for Web3 and Solidity smart contracts. Six security engines — Slither, Mythril, Aderyn, Semgrep, Solhint, Echidna — run in parallel and reconcile every finding by consensus. Scan any contract in under 60 seconds." />
+<link rel="canonical" href="https://auditforge.org/blockchain-audit-tool" />
+<meta name="theme-color" content="#07080A" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Audit Forge" />
+<meta property="og:title" content="Free Blockchain & Web3 Smart Contract Audit Tool — Audit Forge" />
+<meta property="og:description" content="Six independent security engines, one reconciled verdict. Audit any Solidity smart contract in seconds — free and open source." />
+<meta property="og:url" content="https://auditforge.org/blockchain-audit-tool" />
+<meta property="og:image" content="https://auditforge.org/og-cover.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Free Blockchain & Web3 Smart Contract Audit Tool — Audit Forge" />
+<meta name="twitter:description" content="Six independent security engines, one reconciled verdict. Audit any Solidity contract free." />
+<meta name="twitter:image" content="https://auditforge.org/og-cover.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/auditforge.css?v=20260621">
+<link rel="stylesheet" href="/auditforge-pages.css?v=20260621">
+<style>
+  .lp { max-width: 860px; margin: 0 auto; padding: 70px 28px 40px; }
+  .lp .eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--amber); }
+  .lp h1 { font-family: var(--sans); font-weight: 700; letter-spacing: -0.025em; font-size: clamp(34px, 5vw, 52px); line-height: 1.04; margin: 16px 0 18px; }
+  .lp h1 em { font-style: normal; color: var(--amber); }
+  .lp .sub { font-size: 18px; line-height: 1.7; color: var(--ink-2); max-width: 70ch; }
+  .lp .cta { display: flex; gap: 12px; flex-wrap: wrap; margin: 28px 0 8px; }
+  .lp h2 { font-family: var(--sans); font-weight: 700; letter-spacing: -0.02em; font-size: clamp(24px, 3vw, 32px); margin: 56px 0 14px; }
+  .lp h3 { font-size: 18px; font-weight: 600; margin: 24px 0 6px; color: var(--ink); }
+  .lp p { color: var(--ink-2); font-size: 15.5px; line-height: 1.78; margin: 0 0 14px; max-width: 74ch; }
+  .lp a.inl { color: var(--amber); }
+  .lp ul { color: var(--ink-2); font-size: 15.5px; line-height: 1.7; padding-left: 22px; }
+  .lp li { margin-bottom: 8px; }
+  .lp .eng-list { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin: 18px 0; }
+  .lp .eng { border: 1px solid var(--line-2); border-radius: 10px; padding: 14px 16px; background: var(--panel); }
+  .lp .eng b { color: var(--ink); } .lp .eng span { font-family: var(--mono); font-size: 11px; color: var(--ink-3); display: block; margin-top: 2px; }
+  .lp .faq { margin-top: 14px; } .lp .faq h3 { margin-top: 22px; }
+  @media (max-width: 640px) { .lp .eng-list { grid-template-columns: 1fr; } }
+</style>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Audit Forge",
+  "url": "https://auditforge.org/",
+  "applicationCategory": "SecurityApplication",
+  "operatingSystem": "Web",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "description": "A free, open-source blockchain audit tool that runs six independent security engines against Solidity smart contracts and reconciles findings by consensus.",
+  "featureList": ["Static analysis", "Symbolic execution", "Property fuzzing", "Consensus scoring", "Multi-chain by contract address"]
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "@type": "Question", "name": "Is Audit Forge free?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. Audit Forge is free to use and open source (AGPL-3.0). No sign-up is needed to run a scan." } },
+    { "@type": "Question", "name": "Which blockchains does it support?", "acceptedAnswer": { "@type": "Answer", "text": "Any EVM chain via contract address — Ethereum, BNB Chain, Polygon, Arbitrum, Optimism and Base — plus paste or GitHub import for any Solidity source." } },
+    { "@type": "Question", "name": "Is an automated audit a substitute for a manual audit?", "acceptedAnswer": { "@type": "Answer", "text": "No. Audit Forge automates the first pass and is not a substitute for a professional manual audit. Always obtain an independent manual review before deploying a contract that handles funds." } }
+  ]
+}
+</script>
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a href="/" class="brand">
+      <span class="mark"><svg viewBox="0 0 32 32" fill="none"><path d="M16 2 L29 16 L16 30 L3 16 Z" stroke="currentColor" stroke-width="1.6"></path><path d="M16 9 L23 16 L16 23 L9 16 Z" fill="currentColor" fill-opacity="0.16" stroke="currentColor" stroke-width="1.4"></path></svg></span>
+      <span class="name">AUDIT FORGE<small>MULTI-ENGINE AUDIT CONSOLE</small></span>
+    </a>
+    <nav class="nav">
+      <a href="/#/scan">Scan</a>
+      <a href="/#/engines">Engines</a>
+      <a href="/#/registry">Registry</a>
+    </nav>
+  </div>
+</header>
+
+<main class="lp">
+  <span class="eyebrow">Free · Open source · No sign-up</span>
+  <h1>The free <em>blockchain audit tool</em> for Web3 smart contracts.</h1>
+  <p class="sub">Audit Forge runs six independent, industry-standard security engines against your Solidity in parallel — static analysis, symbolic execution, and property fuzzing — then reconciles every finding by consensus into a single 0–100 score. Scan any contract in under 60 seconds.</p>
+  <div class="cta">
+    <a href="/#/scan" class="btn btn-primary">Run a free audit →</a>
+    <a href="/#/engines" class="btn btn-ghost">See the engines</a>
+  </div>
+
+  <h2>What is a smart contract audit tool?</h2>
+  <p>A smart contract audit tool automatically analyzes the source or bytecode of a blockchain contract to surface security vulnerabilities — reentrancy, access-control flaws, unchecked calls, integer issues, and more — before the contract is deployed to a public network, where bugs are irreversible and expensive. Audit Forge is a <strong>multi-engine</strong> Web3 audit tool: instead of relying on a single scanner, it orchestrates the best open-source tools in the ecosystem and cross-references their output, so a finding confirmed by several independent engines is far more trustworthy than one raised by a single tool.</p>
+
+  <h2>Six engines, one reconciled verdict</h2>
+  <p>Each engine runs in an isolated, network-disabled sandbox and contributes a different analysis method. Audit Forge normalizes every finding to the SWC taxonomy and clusters them by consensus.</p>
+  <div class="eng-list">
+    <div class="eng"><b>Slither</b><span>Trail of Bits · static analysis</span></div>
+    <div class="eng"><b>Mythril</b><span>Consensys · symbolic execution</span></div>
+    <div class="eng"><b>Aderyn</b><span>Cyfrin · AST analysis</span></div>
+    <div class="eng"><b>Semgrep</b><span>pattern matching</span></div>
+    <div class="eng"><b>Solhint</b><span>linting / best-practices</span></div>
+    <div class="eng"><b>Echidna</b><span>Trail of Bits · property fuzzing</span></div>
+  </div>
+  <p><a class="inl" href="/#/engines">Read about each engine and its authors →</a></p>
+
+  <h2>How it works</h2>
+  <ul>
+    <li><strong>Submit</strong> — paste Solidity, point at a verified contract address, or link a GitHub repository.</li>
+    <li><strong>Fan-out to six engines</strong> — each runs in parallel in an isolated, network-disabled Docker sandbox.</li>
+    <li><strong>Consensus</strong> — findings cluster by SWC category; confidence scales with how many independent engines agree.</li>
+    <li><strong>Scored report</strong> — a 0–100 score, ranked findings, an AI-written brief, and a shareable PDF.</li>
+  </ul>
+
+  <h2>Which blockchains are supported?</h2>
+  <p>Audit Forge works with any EVM-compatible chain. Audit by <strong>verified contract address</strong> on Ethereum, BNB Chain, Polygon, Arbitrum, Optimism, and Base, or paste/upload Solidity source for any chain. Because analysis runs on the source, it is chain-agnostic.</p>
+
+  <h2>Free and open source</h2>
+  <p>Audit Forge is free to use and released under the AGPL-3.0 license — the full source is on <a class="inl" href="https://github.com/AuditForge-org/AuditForge" target="_blank" rel="noopener noreferrer">GitHub</a>. You can read exactly how every verdict is reached, self-host it, or contribute. It exists to make a strong first-pass security review available to every Web3 developer, for free.</p>
+
+  <h2 class="faq-h">Frequently asked questions</h2>
+  <div class="faq">
+    <h3>Is Audit Forge really free?</h3>
+    <p>Yes — free to use, open source, and no sign-up is needed to run a scan. Signed-in users get higher daily limits.</p>
+    <h3>Is an automated audit enough to deploy?</h3>
+    <p>No. Audit Forge automates the <em>first pass</em>; a high score is not a guarantee of safety. Always commission a professional manual audit for any contract that handles user funds.</p>
+    <h3>Do you store my code?</h3>
+    <p>Paste audits aren't stored unless you publish them to the registry. To generate the AI brief, findings and a portion of the source are sent to a third-party AI provider — see our <a class="inl" href="/#/privacy">Privacy Policy</a>.</p>
+  </div>
+
+  <div class="cta" style="margin-top:40px">
+    <a href="/#/scan" class="btn btn-primary">Audit your contract free →</a>
+  </div>
+</main>
+
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-base">
+      <span>Audit Forge automates the first pass — it is <b>not</b> a substitute for a professional manual audit. Provided without warranty; use at your own risk.</span>
+      <span class="legal-links"><a href="/#/terms">Terms</a> · <a href="/#/privacy">Privacy</a> · <a href="/#/engines">Engines</a></span>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

@@ -552,6 +552,7 @@ window.Views = (function () {
         <div class="actions">
           <a href="${API.pdfUrl(r.id)}" target="_blank" class="btn btn-primary" style="padding:11px 18px">Download PDF</a>
           <button class="btn btn-ghost" id="af-copy" style="padding:11px 18px">Copy link</button>
+          <button class="btn btn-ghost" id="af-publish" style="padding:11px 18px">Publish to registry</button>
         </div>
         <div class="share-row">
           <span class="sr-lbl">Share score</span>
@@ -630,6 +631,22 @@ window.Views = (function () {
     copyTo('#af-copy2',     sh.report, 'Report link copied');
     copyTo('#af-copy-md',   sh.md,     'Markdown copied — paste into your README');
     copyTo('#af-copy-html', sh.html,   'HTML snippet copied');
+
+    const pub = $('#af-publish', root);
+    if (pub) pub.addEventListener('click', async () => {
+      pub.disabled = true; pub.textContent = 'Publishing…';
+      try {
+        await API.publishReport(r.id);
+        pub.textContent = '✓ Published';
+        toast('Published to the public registry');
+      } catch (e) {
+        pub.disabled = false; pub.textContent = 'Publish to registry';
+        const st = e && e.status;
+        if (st === 401) toast('Sign in to publish your audits to the registry', true);
+        else if (st === 403) toast('You can only publish audits you ran while signed in. Sign in, re-run, then publish.', true);
+        else toast('Could not publish: ' + ((e && e.message) || 'error'), true);
+      }
+    });
   }
 
   // ════════════════════════════════════════════════════════════════
