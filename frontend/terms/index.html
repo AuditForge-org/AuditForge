@@ -1,0 +1,64 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-accent="emerald" data-headline="sans">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Terms of Service | Audit Forge</title>
+<meta name="description" content="Terms of Service for Audit Forge — a free, automated, open-source multi-engine smart-contract analysis tool. It is a first pass, not a substitute for a professional audit, and comes with no warranty." />
+<link rel="canonical" href="https://auditforge.org/terms/" />
+<meta name="robots" content="index,follow" />
+<meta name="theme-color" content="#07080A" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Audit Forge" />
+<meta property="og:title" content="Terms of Service | Audit Forge" />
+<meta property="og:description" content="Plain-English terms for a free, automated smart-contract analysis tool." />
+<meta property="og:url" content="https://auditforge.org/terms/" />
+<meta property="og:image" content="https://auditforge.org/og-cover.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content="https://auditforge.org/og-cover.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/auditforge.css?v=20260621b">
+<link rel="stylesheet" href="/auditforge-pages.css?v=20260621b">
+<style>.reveal{opacity:1!important;transform:none!important}</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a href="/" class="brand"><span class="mark"><svg viewBox="0 0 32 32" fill="none"><path d="M16 2 L29 16 L16 30 L3 16 Z" stroke="currentColor" stroke-width="1.6"></path><path d="M16 9 L23 16 L16 23 L9 16 Z" fill="currentColor" fill-opacity="0.16" stroke="currentColor" stroke-width="1.4"></path></svg></span><span class="name">AUDIT FORGE<small>MULTI-ENGINE AUDIT CONSOLE</small></span></a>
+    <nav class="nav"><a href="/#/scan">Scan</a><a href="/engines/">Engines</a><a href="/registry">Registry</a></nav>
+  </div>
+</header>
+<main>
+<section class="page-section legal" style="padding-top:60px">
+  <div class="wrap">
+    <div class="legal-head">
+      <div class="crumb"><a href="/">Home</a> <span>/</span> <span>Terms</span></div>
+      <h1>Terms of Service</h1>
+      <p class="updated">Last updated June 12, 2026</p>
+      <p class="lede">Plain-English terms for a free, automated smart-contract analysis tool. The short version: it is a helpful first pass, not a substitute for a professional audit, and it comes with no warranty.</p>
+    </div>
+    <div class="legal-body">
+      <section><h2>1. Acceptance of these terms</h2><p>Audit Forge ("Audit Forge", "we", "us") provides an automated, multi-engine smart-contract analysis service at auditforge.org (the "Service"). By submitting a contract, address, or repository, or otherwise using the Service, you agree to these Terms of Service. If you do not agree, do not use the Service.</p></section>
+      <section><h2>2. What the Service is — and is not</h2><p>Audit Forge runs your Solidity source through several independent open-source security engines (Slither, Mythril, Aderyn, Semgrep, Solhint and, optionally, Echidna), reconciles their findings by consensus, and produces a score, a findings list, and an AI-generated brief.</p><p><strong>The Service automates a first pass only. It is not a professional manual audit, a guarantee of security, financial advice, or a recommendation to deploy, buy, sell, or interact with any contract.</strong> A high score does not mean a contract is safe. Always obtain an independent, professional manual audit before deploying or trusting a contract with funds.</p></section>
+      <section><h2>3. No warranty</h2><p>The Service is provided <strong>"as is" and "as available", without warranties of any kind</strong>, whether express or implied, including but not limited to merchantability, fitness for a particular purpose, accuracy, completeness, and non-infringement. We do not warrant that findings are complete or correct, that the Service will be uninterrupted, or that defects will be corrected.</p></section>
+      <section><h2>4. Limitation of liability</h2><p>To the maximum extent permitted by law, Audit Forge and its contributors shall not be liable for any indirect, incidental, special, consequential, or exemplary damages, or for any loss of funds, profits, data, or goodwill, arising from your use of (or inability to use) the Service or reliance on its output — even if advised of the possibility of such damages.</p></section>
+      <section><h2>5. Acceptable use</h2><p>You agree not to:</p><ul><li>Submit code, repositories, or data that you do not have the right to share or analyze;</li><li>Use the Service to facilitate illegal activity, or to develop or refine malware or exploits for unlawful purposes;</li><li>Attempt to disrupt, overload, circumvent rate limits, or gain unauthorized access to the Service or its infrastructure;</li><li>Resell or rebrand the Service in violation of its license (see section 8).</li></ul></section>
+      <section><h2>6. Rate limits &amp; fair use</h2><p>The Service is free and shared. We apply per-client rate limits and size limits, and may queue, throttle, or refuse requests to keep it available for everyone. Anonymous submissions have lower limits than signed-in accounts.</p></section>
+      <section><h2>7. Third-party engines &amp; AI processing</h2><p>Analysis engines are third-party open-source tools, each under its own license. To generate the plain-English brief, your reconciled findings and a portion of the submitted source are sent to a third-party AI provider for processing. For address-mode audits, we fetch verified source from public block explorers; for repository audits, from GitHub. See the <a href="/privacy/">Privacy Policy</a> for details.</p></section>
+      <section><h2>8. Open source &amp; intellectual property</h2><p>Audit Forge is licensed under <strong>AGPL-3.0-or-later</strong>. You retain all rights to the code you submit; we claim no ownership of it. You are responsible for ensuring you have the rights to submit it.</p></section>
+      <section><h2>9. Changes</h2><p>We may update these terms as the Service evolves. Material changes will be reflected by the "Last updated" date above. Continued use after a change constitutes acceptance.</p></section>
+      <section><h2>10. Contact</h2><p>Questions about these terms can be raised through the public source repository linked in the site footer.</p></section>
+    </div>
+    <div style="margin-top:48px"><a class="btn btn-ghost" href="/">← Back to Audit Forge</a></div>
+  </div>
+</section>
+</main>
+<footer class="footer"><div class="wrap"><div class="footer-base">
+  <span>Audit Forge automates the first pass — it is <b>not</b> a substitute for a professional manual audit. Provided without warranty.</span>
+  <span class="legal-links"><a href="/terms/">Terms</a> · <a href="/privacy/">Privacy</a> · <a href="/engines/">Engines</a></span>
+</div></div></footer>
+</body>
+</html>

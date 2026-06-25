@@ -1,0 +1,64 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+<!DOCTYPE html>
+<html lang="en" data-theme="dark" data-accent="emerald" data-headline="sans">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Privacy Policy | Audit Forge</title>
+<meta name="description" content="Privacy Policy for Audit Forge — what we collect, why, and who it is shared with. The short version: as little as possible, and your pasted code is not stored unless you publish it." />
+<link rel="canonical" href="https://auditforge.org/privacy/" />
+<meta name="robots" content="index,follow" />
+<meta name="theme-color" content="#07080A" />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="Audit Forge" />
+<meta property="og:title" content="Privacy Policy | Audit Forge" />
+<meta property="og:description" content="What Audit Forge collects, why, and who it is shared with — as little as possible." />
+<meta property="og:url" content="https://auditforge.org/privacy/" />
+<meta property="og:image" content="https://auditforge.org/og-cover.png" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:image" content="https://auditforge.org/og-cover.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/auditforge.css?v=20260621b">
+<link rel="stylesheet" href="/auditforge-pages.css?v=20260621b">
+<style>.reveal{opacity:1!important;transform:none!important}</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap">
+    <a href="/" class="brand"><span class="mark"><svg viewBox="0 0 32 32" fill="none"><path d="M16 2 L29 16 L16 30 L3 16 Z" stroke="currentColor" stroke-width="1.6"></path><path d="M16 9 L23 16 L16 23 L9 16 Z" fill="currentColor" fill-opacity="0.16" stroke="currentColor" stroke-width="1.4"></path></svg></span><span class="name">AUDIT FORGE<small>MULTI-ENGINE AUDIT CONSOLE</small></span></a>
+    <nav class="nav"><a href="/#/scan">Scan</a><a href="/engines/">Engines</a><a href="/registry">Registry</a></nav>
+  </div>
+</header>
+<main>
+<section class="page-section legal" style="padding-top:60px">
+  <div class="wrap">
+    <div class="legal-head">
+      <div class="crumb"><a href="/">Home</a> <span>/</span> <span>Privacy</span></div>
+      <h1>Privacy Policy</h1>
+      <p class="updated">Last updated June 12, 2026</p>
+      <p class="lede">What Audit Forge collects, why, and who it is shared with. The short version: as little as possible — and your pasted code is not stored unless you publish it.</p>
+    </div>
+    <div class="legal-body">
+      <section><h2>1. Overview</h2><p>This policy explains what Audit Forge collects when you use auditforge.org, why, and who it is shared with. We aim to collect as little as possible.</p></section>
+      <section><h2>2. What we collect</h2><ul><li><strong>Submitted content</strong> — the Solidity source you paste, the contract address you enter, or the GitHub repository/path you link, plus scan options.</li><li><strong>Network/technical data</strong> — your IP address and basic request metadata, used for rate-limiting, abuse prevention, and operational logging.</li><li><strong>Account data (only if you sign in)</strong> — your GitHub username, avatar, and email, via GitHub OAuth, plus a session cookie to keep you signed in.</li><li><strong>Cookies</strong> — a single session cookie when signed in. We do not use advertising or cross-site tracking cookies.</li></ul></section>
+      <section><h2>3. How we use it</h2><ul><li>To run the requested analysis and produce your report;</li><li>To generate the AI brief (see section 4);</li><li>To enforce rate limits and protect the Service from abuse;</li><li>To operate, debug, and improve the Service.</li></ul></section>
+      <section><h2>4. Third-party processors</h2><p>To deliver the Service we share the minimum necessary data with:</p><ul><li><strong>AI brief provider (Groq)</strong> — your reconciled findings and a portion of the submitted source are sent to generate the plain-English brief. If you consider your source sensitive, audit it privately rather than through this hosted Service.</li><li><strong>Block explorers</strong> (Etherscan, BscScan and equivalents) — only the contract address, when you audit by address, to fetch verified source.</li><li><strong>GitHub</strong> — only the repository and path, when you audit a repo, to fetch source; and for OAuth login if you sign in.</li><li><strong>Hosting</strong> — the Service runs on a dedicated server (Hetzner); data is processed there.</li></ul></section>
+      <section><h2>5. Data retention</h2><ul><li><strong>Paste audits are not persisted</strong> unless you explicitly publish the report to the public registry.</li><li>Published reports (and reports you generate while signed in) are stored so they remain accessible at their share link and in the registry.</li><li>Operational logs containing IP/request metadata are short-lived and used only for security and debugging.</li></ul></section>
+      <section><h2>6. Security</h2><p>Each analysis engine runs in an isolated, network-disabled, resource-capped sandbox. Traffic is served over TLS. No system is perfectly secure, but we apply industry-standard safeguards.</p></section>
+      <section><h2>7. Your choices</h2><p>You can use the Service anonymously (no account). If you sign in, you can sign out at any time. To request removal of a published report, contact us via the repository linked in the footer.</p></section>
+      <section><h2>8. Children</h2><p>The Service is not directed to children under 13, and we do not knowingly collect their data.</p></section>
+      <section><h2>9. Changes</h2><p>We may update this policy; the "Last updated" date above reflects the latest version.</p></section>
+      <section><h2>10. Contact</h2><p>Privacy questions can be raised through the public source repository linked in the site footer.</p></section>
+    </div>
+    <div style="margin-top:48px"><a class="btn btn-ghost" href="/">← Back to Audit Forge</a></div>
+  </div>
+</section>
+</main>
+<footer class="footer"><div class="wrap"><div class="footer-base">
+  <span>Audit Forge automates the first pass — it is <b>not</b> a substitute for a professional manual audit. Provided without warranty.</span>
+  <span class="legal-links"><a href="/terms/">Terms</a> · <a href="/privacy/">Privacy</a> · <a href="/engines/">Engines</a></span>
+</div></div></footer>
+</body>
+</html>
