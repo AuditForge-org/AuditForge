@@ -224,6 +224,7 @@ app.get('/api/health', (_req, res) => {
 app.get('/api/config', (_req, res) => {
   res.json({
     authEnabled: !!(process.env.GITHUB_OAUTH_CLIENT_ID && process.env.GITHUB_OAUTH_CLIENT_SECRET && process.env.SESSION_SECRET),
+    googleAuthEnabled: !!((process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID) && (process.env.GOOGLE_OAUTH_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET) && process.env.SESSION_SECRET),
     turnstileSiteKey: process.env.TURNSTILE_SITE_KEY || null,
   });
 });

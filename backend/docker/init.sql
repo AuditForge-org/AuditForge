@@ -115,17 +115,28 @@ CREATE TABLE IF NOT EXISTS github_installations (
 CREATE INDEX IF NOT EXISTS gh_installs_account_idx ON github_installations (account_login);
 CREATE INDEX IF NOT EXISTS gh_installs_owner_idx   ON github_installations (owner_id);
 
--- ─── Users (auth via GitHub OAuth) ────────────────────────────────────
+-- ─── Users (auth via GitHub or Google OAuth) ──────────────────────────
+-- Provider columns are all nullable: a row carries github_* OR google_user_id
+-- (or both, once linked by verified email). At least one is always present.
 
 CREATE TABLE IF NOT EXISTS users (
   id              UUID PRIMARY KEY,
   created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
   last_login_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
-  github_user_id  BIGINT UNIQUE NOT NULL,
-  github_username TEXT NOT NULL,
+  github_user_id  BIGINT UNIQUE,
+  github_username TEXT,
+  google_user_id  TEXT UNIQUE,
+  display_name    TEXT,
   email           TEXT,
   avatar_url      TEXT,
   plan            TEXT NOT NULL DEFAULT 'free'
 );
 
 CREATE INDEX IF NOT EXISTS users_github_username_idx ON users (github_username);
+
+-- Idempotent upgrade path for databases created before Google sign-in:
+ALTER TABLE users ALTER COLUMN github_user_id  DROP NOT NULL;
+ALTER TABLE users ALTER COLUMN github_username DROP NOT NULL;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS google_user_id TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS display_name   TEXT;
+CREATE UNIQUE INDEX IF NOT EXISTS users_google_user_id_key ON users (google_user_id);

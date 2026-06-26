@@ -28,12 +28,14 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { sign, verify, JwtPayload } from 'jsonwebtoken';
 import { randomBytes, createHmac, timingSafeEqual } from 'crypto';
-import { upsertUserFromGithub, getUserById, User } from '../db/users';
+import { upsertUserFromGithub, upsertUserFromGoogle, getUserById, displayNameOf, User } from '../db/users';
 import { claimInstallation } from '../db/installations';
 import { RATE_LIMITS } from '../middleware/ratelimit';
 
 const OAUTH_CLIENT_ID = process.env.GITHUB_OAUTH_CLIENT_ID || '';
 const OAUTH_CLIENT_SECRET = process.env.GITHUB_OAUTH_CLIENT_SECRET || '';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_OAUTH_CLIENT_ID || process.env.GOOGLE_CLIENT_ID || '';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_OAUTH_CLIENT_SECRET || process.env.GOOGLE_CLIENT_SECRET || '';
 const SESSION_SECRET = process.env.SESSION_SECRET || '';
 const PUBLIC_URL = process.env.PUBLIC_URL || 'http://localhost:3000';
 const FRONTEND_URL = process.env.FRONTEND_URL || PUBLIC_URL;
@@ -42,6 +44,10 @@ const SESSION_TTL_DAYS = 7;
 
 export function isAuthConfigured(): boolean {
   return !!(OAUTH_CLIENT_ID && OAUTH_CLIENT_SECRET && SESSION_SECRET);
+}
+
+export function isGoogleConfigured(): boolean {
+  return !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && SESSION_SECRET);
 }
 
 interface SessionPayload extends JwtPayload {
@@ -54,7 +60,7 @@ interface SessionPayload extends JwtPayload {
 
 function issueSession(user: User): string {
   return sign(
-    { uid: user.id, gid: user.githubUserId, uname: user.githubUsername },
+    { uid: user.id, gid: user.githubUserId || 0, uname: displayNameOf(user) },
     SESSION_SECRET,
     { algorithm: 'HS256', expiresIn: `${SESSION_TTL_DAYS}d`, issuer: 'forensiq' }
   );
@@ -311,6 +317,98 @@ router.get('/github/callback', RATE_LIMITS.auth, async (req: Request, res: Respo
   res.redirect(returnUrl);
 });
 
+// ─── Google OAuth (OIDC) ─────────────────────────────────────────────
+
+/**
+ * GET /api/auth/google/login?returnTo=/some/path
+ * Redirects to Google's OAuth 2.0 / OpenID Connect consent screen.
+ */
+router.get('/google/login', RATE_LIMITS.auth, (req: Request, res: Response) => {
+  if (!isGoogleConfigured()) {
+    return res.status(503).json({ error: 'Google sign-in not configured on this server' });
+  }
+  const returnTo = (req.query.returnTo as string) || '/';
+  const state = signState(returnTo);
+  const params = new URLSearchParams({
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: `${PUBLIC_URL}/api/auth/google/callback`,
+    response_type: 'code',
+    scope: 'openid email profile',
+    state,
+    access_type: 'online',
+    prompt: 'select_account',
+  });
+  res.redirect(`https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`);
+});
+
+/**
+ * GET /api/auth/google/callback
+ * Google redirects here. We exchange the code for an id_token at Google's
+ * token endpoint (over TLS, authenticated with our client secret), read the
+ * verified claims, and upsert the user. We don't re-verify the id_token
+ * signature because it was delivered directly by Google's token endpoint in
+ * response to our authenticated request — the standard confidential-client
+ * code flow, not a token presented by the browser.
+ */
+router.get('/google/callback', RATE_LIMITS.auth, async (req: Request, res: Response) => {
+  if (!isGoogleConfigured()) {
+    return res.status(503).json({ error: 'Google sign-in not configured' });
+  }
+  const { code, state, error: oauthError } = req.query;
+  if (oauthError) return res.redirect(`${FRONTEND_URL}/#/login?error=${encodeURIComponent(String(oauthError))}`);
+  if (!code || !state) return res.status(400).json({ error: 'Missing code or state' });
+
+  const verified = verifyState(String(state));
+  if (!verified) return res.status(400).json({ error: 'Invalid or expired state' });
+
+  // Exchange code for tokens
+  let idToken: string;
+  try {
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code: String(code),
+        client_id: GOOGLE_CLIENT_ID,
+        client_secret: GOOGLE_CLIENT_SECRET,
+        redirect_uri: `${PUBLIC_URL}/api/auth/google/callback`,
+        grant_type: 'authorization_code',
+      }).toString(),
+    });
+    const tokenData = (await tokenRes.json()) as { id_token?: string; error?: string; error_description?: string };
+    if (!tokenData.id_token) {
+      return res.status(400).json({ error: 'Token exchange failed', detail: tokenData.error_description || tokenData.error });
+    }
+    idToken = tokenData.id_token;
+  } catch (e) {
+    return res.status(502).json({ error: 'Token exchange request failed', detail: (e as Error).message });
+  }
+
+  // Decode id_token claims (JWT payload segment)
+  let claims: { sub?: string; email?: string; email_verified?: boolean | string; name?: string; picture?: string };
+  try {
+    const seg = idToken.split('.')[1];
+    claims = JSON.parse(Buffer.from(seg, 'base64url').toString('utf8'));
+  } catch {
+    return res.status(502).json({ error: 'Could not read Google profile' });
+  }
+  if (!claims.sub) return res.status(502).json({ error: 'Google profile missing subject id' });
+
+  const emailVerified = claims.email_verified === true || claims.email_verified === 'true';
+  const user = await upsertUserFromGoogle({
+    googleUserId: claims.sub,
+    email: claims.email,
+    emailVerified,
+    displayName: claims.name || (claims.email ? claims.email.split('@')[0] : undefined),
+    avatarUrl: claims.picture,
+  });
+
+  const session = issueSession(user);
+  setSessionCookie(res, session);
+  const returnUrl = verified.returnTo.startsWith('/') ? `${FRONTEND_URL}${verified.returnTo}` : FRONTEND_URL;
+  res.redirect(returnUrl);
+});
+
 /**
  * Find any installations created under the user's GitHub login and link them
  * to the just-logged-in Forensiq user. This is what makes the "install App,
@@ -344,7 +442,9 @@ router.get('/me', optionalAuth, (req: Request, res: Response) => {
   res.json({
     user: {
       id: req.user.id,
+      name: displayNameOf(req.user),
       githubUsername: req.user.githubUsername,
+      provider: req.user.googleUserId ? (req.user.githubUserId ? 'github+google' : 'google') : 'github',
       email: req.user.email,
       avatarUrl: req.user.avatarUrl,
       plan: req.user.plan,

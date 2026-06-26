@@ -72,9 +72,16 @@ window.API = (function () {
     }
   }
 
-  /** Start the OAuth flow. Browser navigates away — no return value. */
+  /** Start the GitHub OAuth flow. Browser navigates away — no return value. */
   function login(returnTo) {
     const url = BASE + '/api/auth/github/login?returnTo=' +
+      encodeURIComponent(returnTo || window.location.hash || '#/scan');
+    window.location.href = url;
+  }
+
+  /** Start the Google OAuth flow. Browser navigates away — no return value. */
+  function loginGoogle(returnTo) {
+    const url = BASE + '/api/auth/google/login?returnTo=' +
       encodeURIComponent(returnTo || window.location.hash || '#/scan');
     window.location.href = url;
   }
@@ -182,7 +189,7 @@ window.API = (function () {
   return {
     BASE,
     // Auth
-    refreshMe, login, logout, getUser, onAuthChange,
+    refreshMe, login, loginGoogle, logout, getUser, onAuthChange,
     health, getConfig,
     submitAudit, getAudit, watchAudit, pdfUrl, shareUrl, reportUrl, badgeUrl,
     listWatchedProjects, createWatchedProject, getWatchedProject,

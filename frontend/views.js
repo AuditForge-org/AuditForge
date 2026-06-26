@@ -768,8 +768,9 @@ window.Views = (function () {
     let projects = null;
     try { const d = await API.listWatchedProjects(); projects = d.projects || []; }
     catch (e) {
-      body.innerHTML = `<div class="af-empty" style="padding:60px 36px"><span class="ico">⊘</span>Sign in with GitHub to save watched repositories and receive alerts.<br><br><button class="btn btn-primary" id="watch-signin">Sign in with GitHub</button></div>`;
-      const b = $('#watch-signin', root); if (b) b.addEventListener('click', () => API.login('#/watch'));
+      body.innerHTML = `<div class="af-empty" style="padding:60px 36px"><span class="ico">⊘</span>Sign in to save watched repositories and receive alerts.<br><br><button class="btn btn-primary" id="watch-signin">Sign in</button></div>`;
+      const b = $('#watch-signin', root);
+      if (b) b.addEventListener('click', () => (window.AF_signin ? window.AF_signin('#/watch') : API.login('#/watch')));
       return;
     }
 
