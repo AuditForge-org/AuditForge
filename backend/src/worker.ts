@@ -15,6 +15,7 @@ import IORedis from 'ioredis';
 import { runAllTools } from './engines/runner';
 import { buildConsensus, calculateScore } from './consensus/engine';
 import { saveReport, getReport } from './db/reports';
+import { publishReport } from './registry/store';
 import { generateAiBrief } from './ai/brief';
 import { AuditReport, Tool } from './types/finding';
 import {
@@ -56,6 +57,8 @@ interface AuditJobData {
   enableFuzzing?: boolean;
   /** Forensiq user id of the submitter (undefined for anonymous) */
   ownerId?: string;
+  /** Publish the finished report to the public registry (signed-in only) */
+  autoPublish?: boolean;
   /** Set when this audit was triggered by a watched-project webhook */
   watchedRunId?: string;
   watchedProjectId?: string;
@@ -68,7 +71,7 @@ const worker = new Worker<AuditJobData>(
   async (job: Job<AuditJobData>) => {
     const start = Date.now();
     const {
-      auditId, source, tools, solcVersion, enableFuzzing, ownerId,
+      auditId, source, tools, solcVersion, enableFuzzing, ownerId, autoPublish,
       watchedRunId, watchedProjectId, github,
     } = job.data;
     let { code } = job.data;
@@ -128,6 +131,20 @@ const worker = new Worker<AuditJobData>(
       };
 
       await saveReport(report);
+
+      // ─── Auto-publish to the public registry (signed-in, opt-out) ───
+      // Default behavior for signed-in users; the submitter can opt out per
+      // scan. Best-effort — a publish failure must never fail the audit.
+      if (ownerId && autoPublish) {
+        try {
+          await publishReport(auditId, ownerId, report, {
+            verifiedSource: source.type === 'address',
+          });
+          console.log(`[worker] auto-published ${auditId} to registry`);
+        } catch (e) {
+          console.warn('[worker] auto-publish failed:', (e as Error).message);
+        }
+      }
 
       // ─── S3 archival (best-effort; no-op if S3_REPORTS_BUCKET unset) ─
       // We don't await this on the critical path. If S3 is down, the

@@ -214,6 +214,7 @@ window.Views = (function () {
         </div>
       </div>
       <div class="console-foot">
+        <label class="toggle on" id="af-publish-opt"><span class="sw"></span><span class="lbl">Publish to registry <em>(on · uncheck to keep private)</em></span></label>
         <label class="toggle" id="echidna"><span class="sw"></span><span class="lbl">Enable Echidna fuzzing <em>(slower · ~6 min · finds counterexamples)</em></span></label>
         <div class="actions">
           <button class="btn btn-ghost" id="loadSample">Load vulnerable sample</button>
@@ -221,7 +222,7 @@ window.Views = (function () {
         </div>
       </div>
       <div class="af-ts" id="af-turnstile"></div>
-      <p class="console-disclosure">Engines run in isolated, network-disabled sandboxes. To generate the plain-English brief, your findings and a portion of the submitted source are sent to a third-party AI provider (Groq). Paste audits aren't stored unless you publish them. See our <a href="#/privacy">Privacy Policy</a>.</p>
+      <p class="console-disclosure">Engines run in isolated, network-disabled sandboxes. To generate the plain-English brief, your findings and a portion of the submitted source are sent to a third-party AI provider (Groq). When you're signed in, your audit is published to the public registry by default — switch off <b>Publish to registry</b> above to keep it private. Anonymous audits are never published. See our <a href="/privacy/">Privacy Policy</a>.</p>
     </div>
     <div id="af-progress"></div>
   </div>
@@ -324,7 +325,7 @@ window.Views = (function () {
       <div class="faq-item"><button class="faq-q"><span class="qn">02</span><span class="qt">What does the 0–100 score mean?</span><span class="ic"></span></button><div class="faq-a"><div class="inner">It's a weighted roll-up of every reconciled finding — severity times consensus. A high score means few issues and broad engine agreement that the contract is clean; it is a signal, not a guarantee.</div></div></div>
       <div class="faq-item"><button class="faq-q"><span class="qn">03</span><span class="qt">Which networks can I scan by contract address?</span><span class="ic"></span></button><div class="faq-a"><div class="inner">Any chain with a verified-source explorer: Ethereum, Base, Arbitrum, Optimism, Polygon, BNB Chain and EthereumPoW. We pull verified source directly from the explorer and run the full engine suite.</div></div></div>
       <div class="faq-item"><button class="faq-q"><span class="qn">04</span><span class="qt">What is "consensus" and why does it matter?</span><span class="ic"></span></button><div class="faq-a"><div class="inner">Every engine reports differently and produces false positives. We normalize each finding to its SWC category and count how many independent tools flagged it. Agreement across tools that work in completely different ways is the strongest signal that a finding is real.</div></div></div>
-      <div class="faq-item"><button class="faq-q"><span class="qn">05</span><span class="qt">Is my code private?</span><span class="ic"></span></button><div class="faq-a"><div class="inner">The six analysis engines run in an isolated, network-disabled sandbox and never send your code anywhere. To write the plain-English <b>AI brief</b>, however, your source is sent to a third-party LLM provider (Groq) — this happens automatically on every scan. Reports stay private to you unless you choose to publish one to the public registry.</div></div></div>
+      <div class="faq-item"><button class="faq-q"><span class="qn">05</span><span class="qt">Is my code private?</span><span class="ic"></span></button><div class="faq-a"><div class="inner">The six analysis engines run in an isolated, network-disabled sandbox and never send your code anywhere. To write the plain-English <b>AI brief</b>, however, your source is sent to a third-party LLM provider (Groq) — this happens automatically on every scan. When you're signed in, your audit is listed in the public registry by default; switch off the <b>Publish to registry</b> toggle before scanning to keep a report private. Anonymous scans are never published.</div></div></div>
       <div class="faq-item"><button class="faq-q"><span class="qn">06</span><span class="qt">How long does a scan take?</span><span class="ic"></span></button><div class="faq-a"><div class="inner">Most scans finish in under 60 seconds. Enabling Echidna property fuzzing adds a few minutes because it executes thousands of adversarial transaction sequences against your invariants.</div></div></div>
       <div class="faq-item"><button class="faq-q"><span class="qn">07</span><span class="qt">What can automated analysis <em>not</em> catch?</span><span class="ic"></span></button><div class="faq-a"><div class="inner">Anything that requires understanding intent: flawed incentive design, oracle and governance manipulation, cross-contract economic attacks, and bugs that only exist relative to your spec. Treat Audit Forge as triage, not a seal of approval.</div></div></div>
       <div class="faq-item"><button class="faq-q"><span class="qn">08</span><span class="qt">Is it free and open source?</span><span class="ic"></span></button><div class="faq-a"><div class="inner">The scanner is free — run a quick scan with no account, or sign in (also free) to raise your daily limit. Audit Forge is released under AGPL-3.0, and every engine it orchestrates is open source — you can read exactly how a verdict was reached.</div></div></div>
@@ -360,7 +361,7 @@ window.Views = (function () {
       try { if (window.turnstile && ts.widgetId != null) window.turnstile.reset(ts.widgetId); } catch (e) {}
       ts.token = '';
     };
-    function submit(source, enableFuzzing) {
+    function submit(source, enableFuzzing, publish) {
       // If Turnstile is active, require a token before spending an audit slot.
       if ((window.AF_CONFIG || {}).turnstileSiteKey && !ts.token) {
         return toast('Please complete the verification check below the form.', true);
@@ -376,7 +377,7 @@ window.Views = (function () {
       };
       clog('submitting ' + source.type + ' audit…');
       prog.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      API.submitAudit(source, { enableFuzzing, turnstileToken: ts.token }).then(({ id }) => {
+      API.submitAudit(source, { enableFuzzing, publish, turnstileToken: ts.token }).then(({ id }) => {
         resetTurnstile();  // token is single-use — refresh for the next submit
         clog('queued · ' + id, 'ok');
         if (cancelWatch) cancelWatch();
@@ -408,18 +409,21 @@ window.Views = (function () {
     $('#af-run', root).addEventListener('click', () => {
       const activeTab = (($('.tabs .tab.active', root) || {}).dataset || {}).tab || 'paste';
       const enableFuzzing = !!($('#echidna', root) && $('#echidna', root).classList.contains('on'));
+      // Publish-by-default (signed-in only, enforced server-side); user can opt out here.
+      const pubEl = $('#af-publish-opt', root);
+      const publish = !pubEl || pubEl.classList.contains('on');
       if (activeTab === 'paste') {
         const code = ($('#code', root).textContent || '').trim();
         if (code.length < 20) return toast('Paste a contract first', true);
-        submit({ type: 'paste', code }, enableFuzzing);
+        submit({ type: 'paste', code }, enableFuzzing, publish);
       } else if (activeTab === 'address') {
         const addr = ($('#af-addr', root).value || '').trim();
         if (!/^0x[a-fA-F0-9]{40}$/.test(addr)) return toast('Enter a valid 0x… address', true);
-        submit({ type: 'address', address: addr, chain: $('#af-chain', root).value }, enableFuzzing);
+        submit({ type: 'address', address: addr, chain: $('#af-chain', root).value }, enableFuzzing, publish);
       } else {
         const repo = ($('#af-repo', root).value || '').trim().replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '');
         if (!repo) return toast('Enter a repository (org/repo)', true);
-        submit({ type: 'github', repo, path: ($('#af-path', root).value || '').trim() || undefined, ref: ($('#af-ref', root).value || '').trim() || undefined }, enableFuzzing);
+        submit({ type: 'github', repo, path: ($('#af-path', root).value || '').trim() || undefined, ref: ($('#af-ref', root).value || '').trim() || undefined }, enableFuzzing, publish);
       }
     });
 
@@ -474,10 +478,10 @@ window.Views = (function () {
       setTimeout(() => report(root, params), 3000);
       return;
     }
-    renderReport(root, data.report);
+    renderReport(root, data.report, !!data.published);
   }
 
-  function renderReport(root, r) {
+  function renderReport(root, r, published) {
     const counts = { critical: 0, high: 0, medium: 0, low: 0, info: 0 };
     (r.consensusFindings || []).forEach(f => { counts[f.severity] = (counts[f.severity] || 0) + 1; });
     const tier = riskTier(r.score);
@@ -552,7 +556,9 @@ window.Views = (function () {
         <div class="actions">
           <a href="${API.pdfUrl(r.id)}" target="_blank" class="btn btn-primary" style="padding:11px 18px">Download PDF</a>
           <button class="btn btn-ghost" id="af-copy" style="padding:11px 18px">Copy link</button>
-          <button class="btn btn-ghost" id="af-publish" style="padding:11px 18px">Publish to registry</button>
+          ${published
+            ? `<a href="/registry" class="btn btn-ghost" style="padding:11px 18px" title="This audit is listed in the public registry">✓ In registry</a>`
+            : `<button class="btn btn-ghost" id="af-publish" style="padding:11px 18px">Publish to registry</button>`}
         </div>
         <div class="share-row">
           <span class="sr-lbl">Share score</span>
@@ -972,10 +978,10 @@ window.Views = (function () {
           '<strong>Block explorers</strong> (Etherscan, BscScan and equivalents) — only the contract address, when you audit by address, to fetch verified source.',
           '<strong>GitHub</strong> — only the repository and path, when you audit a repo, to fetch source; and for OAuth login if you sign in.',
           '<strong>Hosting</strong> — the Service runs on a dedicated server (Hetzner); data is processed there.')) +
-      sec('5. Data retention',
+      sec('5. Data retention &amp; publication',
         ul(
-          '<strong>Paste audits are not persisted</strong> unless you explicitly publish the report to the public registry.',
-          'Published reports (and reports you generate while signed in) are stored so they remain accessible at their share link and in the registry.',
+          '<strong>Signed-in audits are published to the public registry by default.</strong> Before each scan you can switch off the "Publish to registry" toggle to keep that report private to your account. Published reports are stored so they remain accessible at their share link and in the registry.',
+          '<strong>Anonymous audits are never auto-published</strong>, and pasted source from an anonymous scan is not retained beyond delivering your result.',
           'Operational logs containing IP/request metadata are short-lived and used only for security and debugging.')) +
       sec('6. Security',
         p(`Each analysis engine runs in an isolated, network-disabled, resource-capped sandbox. Traffic is served over TLS. No system is perfectly secure, but we apply industry-standard safeguards.`)) +

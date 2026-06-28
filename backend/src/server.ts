@@ -133,6 +133,12 @@ const SubmitAuditSchema = z.object({
   solcVersion: z.string().optional(),
   /** Opt-in property-based fuzzing — adds several minutes to scan duration */
   enableFuzzing: z.boolean().optional(),
+  /**
+   * Publish the finished report to the public registry. Defaults to true, but
+   * only ever takes effect for signed-in users (anonymous audits are never
+   * auto-published). Set false to keep a signed-in audit private.
+   */
+  publish: z.boolean().optional(),
 });
 
 // ─── Middleware ──────────────────────────────────────────────────────────
@@ -265,8 +271,13 @@ app.post('/api/audits', RATE_LIMITS.auditDaily, RATE_LIMITS.auditSubmit, verifyT
     return res.status(400).json({ error: 'Invalid payload', details: parsed.error.format() });
   }
 
-  const { source, solcVersion } = parsed.data;
+  const { source, solcVersion, publish } = parsed.data;
   let { tools, enableFuzzing } = parsed.data;
+
+  // Publish-by-default, but only for signed-in users — anonymous audits are
+  // never auto-listed in the public registry. `publish !== false` keeps the
+  // default on when the flag is omitted.
+  const autoPublish = publish !== false && !!req.userId;
 
   // Anonymous users can't trigger the expensive opt-in engines — Echidna fuzzing
   // can run for minutes and gigabytes. Gate those behind a signed-in account.
@@ -333,6 +344,7 @@ app.post('/api/audits', RATE_LIMITS.auditDaily, RATE_LIMITS.auditSubmit, verifyT
     enableFuzzing,
     // Record the submitting user (anonymous submissions get undefined)
     ownerId: req.userId,
+    autoPublish,
   }, {
     jobId: auditId,
     attempts: 1,
@@ -353,7 +365,10 @@ app.post('/api/audits', RATE_LIMITS.auditDaily, RATE_LIMITS.auditSubmit, verifyT
  */
 app.get('/api/audits/:id', asyncHandler(async (req, res) => {
   const report = await getReport(req.params.id);
-  if (report) return res.json({ status: 'complete', report });
+  if (report) {
+    const published = await isReportPublished(req.params.id).catch(() => false);
+    return res.json({ status: 'complete', report, published });
+  }
 
   const job = await auditQueue.getJob(req.params.id);
   if (!job) return res.status(404).json({ error: 'Not found' });
