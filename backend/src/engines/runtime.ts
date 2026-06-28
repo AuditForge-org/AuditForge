@@ -58,53 +58,113 @@ export interface Runtime {
 class DockerRuntime implements Runtime {
   name() { return 'docker'; }
 
+  /**
+   * Detached lifecycle: `docker run -d` (create+start) → `docker wait`
+   * (block on exit) → `docker logs` (batch-retrieve output) → `docker rm`.
+   *
+   * Why not foreground `docker run` with an attached stream? The attach is a
+   * hijacked, bidirectional HTTP stream. A locked-down docker-socket-proxy
+   * (which only permits discrete create/start/wait/logs/rm calls) can't tunnel
+   * it, so foreground runs hang behind the proxy. The detached lifecycle uses
+   * only proxy-able calls, letting the worker talk to a restricted proxy
+   * instead of mounting the raw host socket — closing the container-escape gap.
+   *
+   * Bonus: the timeout now kills the *container* (via `docker kill`), not just
+   * the local `docker` client, which the old foreground path left racy.
+   */
   async run(spec: RunSpec): Promise<RunResult> {
-    return new Promise((resolve, reject) => {
-      const mount = spec.writable ? `${spec.inputDir}:/input` : `${spec.inputDir}:/input:ro`;
-      const args = [
-        'run', '--rm',
-        '--network', 'none',
-        ...(spec.writable ? [] : ['--read-only']),
-        '--tmpfs', '/tmp:size=256m',
-        '--memory', `${spec.memoryMb || 1024}m`,
-        '--cpus', String(spec.cpus || 1.5),
-        '-v', mount,
-        '-w', '/input',
-        '--cap-drop', 'ALL',
-        '--security-opt', 'no-new-privileges',
-        // Parent the spawned engine container under a host cgroup/slice when
-        // configured (ENGINE_CGROUP_PARENT), so it shares the host's resource
-        // ceiling instead of running unbounded outside it.
-        ...(process.env.ENGINE_CGROUP_PARENT ? ['--cgroup-parent', process.env.ENGINE_CGROUP_PARENT] : []),
-        ...Object.entries(spec.env || {}).flatMap(([k, v]) => ['-e', `${k}=${v}`]),
-        spec.image,
-        ...spec.args,
-      ];
+    const mount = spec.writable ? `${spec.inputDir}:/input` : `${spec.inputDir}:/input:ro`;
+    // NOTE: no `--rm` — the container must outlive its exit so we can read its
+    // logs and exit code; we remove it explicitly in the finally block.
+    const runArgs = [
+      'run', '-d',
+      '--network', 'none',
+      ...(spec.writable ? [] : ['--read-only']),
+      '--tmpfs', '/tmp:size=256m',
+      '--memory', `${spec.memoryMb || 1024}m`,
+      '--cpus', String(spec.cpus || 1.5),
+      '-v', mount,
+      '-w', '/input',
+      '--cap-drop', 'ALL',
+      '--security-opt', 'no-new-privileges',
+      // Parent the spawned engine container under a host cgroup/slice when
+      // configured (ENGINE_CGROUP_PARENT), so it shares the host's resource
+      // ceiling instead of running unbounded outside it.
+      ...(process.env.ENGINE_CGROUP_PARENT ? ['--cgroup-parent', process.env.ENGINE_CGROUP_PARENT] : []),
+      ...Object.entries(spec.env || {}).flatMap(([k, v]) => ['-e', `${k}=${v}`]),
+      spec.image,
+      ...spec.args,
+    ];
+    if (spec.stdin) {
+      // No caller uses stdin today; detached run can't feed it. Fail loudly
+      // rather than silently dropping input if that ever changes.
+      throw new Error('DockerRuntime: spec.stdin is not supported in detached mode');
+    }
 
-      const proc = spawn('docker', args, {
-        stdio: spec.stdin ? ['pipe', 'pipe', 'pipe'] : ['ignore', 'pipe', 'pipe'],
-      });
+    // 1) Create + start, detached. Fast — returns the container id on stdout.
+    const started = await execDocker(runArgs, 60_000);
+    if (started.code !== 0) {
+      throw new Error(`docker run failed (${started.code}): ${(started.stderr || started.stdout).trim().slice(0, 500)}`);
+    }
+    const id = started.stdout.trim().split(/\s+/).pop() || '';
+    if (!/^[0-9a-f]{12,64}$/i.test(id)) {
+      throw new Error(`docker run did not return a container id: ${started.stdout.trim().slice(0, 200)}`);
+    }
 
-      let stdout = '', stderr = '';
-      let killed = false;
-      const timer = setTimeout(() => { killed = true; proc.kill('SIGKILL'); }, spec.timeoutMs);
-
-      proc.stdout!.on('data', d => stdout += d.toString());
-      proc.stderr!.on('data', d => stderr += d.toString());
-
-      if (spec.stdin && proc.stdin) {
-        proc.stdin.write(spec.stdin);
-        proc.stdin.end();
-      }
-
-      proc.on('error', err => { clearTimeout(timer); reject(err); });
-      proc.on('close', code => {
-        clearTimeout(timer);
-        if (killed) reject(new Error(`Tool timed out after ${spec.timeoutMs}ms`));
-        else resolve({ stdout, stderr, code: code ?? -1 });
-      });
-    });
+    try {
+      // 2) Block until the container exits, killing it if it overruns.
+      const { code, timedOut } = await waitContainer(id, spec.timeoutMs);
+      // 3) Batch-retrieve logs. Without a TTY, the CLI demuxes the container's
+      //    stdout/stderr onto its own stdout/stderr, so the split is preserved.
+      const logs = await execDocker(['logs', id], 30_000);
+      if (timedOut) throw new Error(`Tool timed out after ${spec.timeoutMs}ms`);
+      return { stdout: logs.stdout, stderr: logs.stderr, code };
+    } finally {
+      // 4) Remove the container (best-effort; we dropped --rm).
+      await execDocker(['rm', '-f', id], 15_000).catch(() => {});
+    }
   }
+}
+
+/** Spawn `docker <args>`, buffer stdout/stderr, hard-kill after timeoutMs. */
+function execDocker(args: string[], timeoutMs: number): Promise<RunResult> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('docker', args, { stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '', stderr = '', killed = false;
+    const timer = setTimeout(() => { killed = true; proc.kill('SIGKILL'); }, timeoutMs);
+    proc.stdout!.on('data', d => stdout += d.toString());
+    proc.stderr!.on('data', d => stderr += d.toString());
+    proc.on('error', err => { clearTimeout(timer); reject(err); });
+    proc.on('close', code => {
+      clearTimeout(timer);
+      if (killed) return reject(new Error(`docker ${args[0]} timed out after ${timeoutMs}ms`));
+      resolve({ stdout, stderr, code: code ?? -1 });
+    });
+  });
+}
+
+/**
+ * `docker wait <id>` blocks until the container exits and prints its exit code
+ * on stdout. We bound it with our own timer; on overrun we `docker kill` the
+ * container (which unblocks the wait) and report timedOut. Resolves rather than
+ * rejects on timeout so the caller can still read partial logs + clean up.
+ */
+function waitContainer(id: string, timeoutMs: number): Promise<{ code: number; timedOut: boolean }> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('docker', ['wait', id], { stdio: ['ignore', 'pipe', 'pipe'] });
+    let out = '', timedOut = false;
+    const timer = setTimeout(() => {
+      timedOut = true;
+      spawn('docker', ['kill', id], { stdio: 'ignore' });  // unblock wait; ignore errors
+    }, timeoutMs);
+    proc.stdout!.on('data', d => out += d.toString());
+    proc.on('error', err => { clearTimeout(timer); reject(err); });
+    proc.on('close', () => {
+      clearTimeout(timer);
+      const code = parseInt(out.trim().split(/\s+/).pop() || '', 10);
+      resolve({ code: Number.isFinite(code) ? code : -1, timedOut });
+    });
+  });
 }
 
 // ─── Kubernetes backend (prod) ───────────────────────────────────────

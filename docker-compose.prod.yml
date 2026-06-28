@@ -94,6 +94,32 @@ services:
         limits:
           memory: 1g
 
+  # ─── Docker socket proxy (security) ──────────────────────────────────
+  # The worker no longer mounts the raw host Docker socket. Instead it talks
+  # to this filtered proxy over the internal network (DOCKER_HOST=tcp://…:2375).
+  # The proxy is the ONLY container with socket access and permits just the API
+  # sections the engine lifecycle needs — containers (create/start/wait/kill/
+  # logs/inspect/remove) and image inspect. EXEC, SECRETS, CONFIGS, SWARM,
+  # NODES, SERVICES, BUILD, INFO, SYSTEM, PLUGINS, … all stay default-denied,
+  # shrinking what a compromised worker process could reach through the daemon.
+  docker-socket-proxy:
+    image: tecnativa/docker-socket-proxy:0.3.0@sha256:9e4b9e7517a6b660f2cc903a19b257b1852d5b3344794e3ea334ff00ae677ac2
+    restart: unless-stopped
+    cgroup_parent: webapps.slice
+    environment:
+      CONTAINERS: "1"   # create / start / wait / kill / logs / inspect / remove
+      IMAGES: "1"       # image inspect, so `docker run` resolves the local engine image
+      POST: "1"         # allow write verbs (create/start/wait/kill, remove)
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    security_opt:
+      - no-new-privileges:true
+    networks: [internal]
+    deploy:
+      resources:
+        limits:
+          memory: 64m
+
   worker:
     image: forensiq:local
     # No build block — reuses the image built by the api service above
@@ -120,17 +146,19 @@ services:
       # the same slice explicitly, or a heavy mythril/echidna run escapes the
       # webapps.slice ceiling and could starve the geth node.
       ENGINE_CGROUP_PARENT: webapps.slice
+      # Talk to the host Docker daemon through the filtered socket proxy instead
+      # of mounting the raw socket. The docker CLI in this image honors DOCKER_HOST.
+      DOCKER_HOST: tcp://docker-socket-proxy:2375
     volumes:
-      # The worker spawns engine containers (slither, mythril, …) via the
-      # host Docker daemon. This socket mount is what makes that work on a
-      # single host. The worker image itself contains the docker CLI.
-      - /var/run/docker.sock:/var/run/docker.sock
       # Identical-path bind mount (see TMPDIR above) so the contract source the
       # worker writes is visible to the engine containers spawned on the host.
+      # (Engine `-v` mounts resolve as HOST paths on the daemon side, so this
+      # still works when the daemon is reached via the TCP proxy.)
       - /srv/dapp/forensiq/worker-scratch:/srv/dapp/forensiq/worker-scratch
     depends_on:
       postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+      docker-socket-proxy: { condition: service_started }
     networks: [internal]
     deploy:
       resources:
