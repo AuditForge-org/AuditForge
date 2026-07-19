@@ -543,6 +543,7 @@ window.Views = (function () {
         <div class="meta-grid">
           <div><span class="k">Source</span><span class="v">${escapeHtml((r.source && r.source.label) || 'paste')}</span></div>
           <div><span class="k">Network</span><span class="v">${escapeHtml(chainName(r.source && r.source.chain) || (r.source && r.source.type) || '—')}</span></div>
+          ${r.source && r.source.implementationAddress ? `<div><span class="k">Proxy</span><span class="v" title="The requested address is a proxy; its implementation was analyzed">${escapeHtml(r.source.proxyContractName || 'Proxy')} → impl <code>${escapeHtml(String(r.source.implementationAddress).slice(0, 10))}…${escapeHtml(String(r.source.implementationAddress).slice(-6))}</code></span></div>` : ''}
           <div><span class="k">Audited</span><span class="v">${escapeHtml(new Date(r.createdAt || Date.now()).toISOString().slice(0, 16).replace('T', ' '))} UTC</span></div>
           <div><span class="k">Engines run</span><span class="v"><span class="ok">${toolsRun.length} / 6</span> · ${((r.durationMs || 0) / 1000).toFixed(1)}s total</span></div>
           <div><span class="k">Lines</span><span class="v">${(r.contract && r.contract.lines) || '—'}</span></div>

@@ -119,6 +119,15 @@ export interface AuditReport {
     repo?: string;
     path?: string;
     ref?: string;
+    /** Best-effort contract name resolved from the explorer. */
+    contractName?: string;
+    /**
+     * Set when `address` is a proxy: the implementation address whose source
+     * was actually analyzed. The report describes THIS bytecode, not the proxy.
+     */
+    implementationAddress?: string;
+    /** The proxy shell we looked through, e.g. "TransparentUpgradeableProxy". */
+    proxyContractName?: string;
   };
 
   contract: {

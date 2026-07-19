@@ -319,6 +319,14 @@ app.post('/api/audits', RATE_LIMITS.auditDaily, RATE_LIMITS.auditSubmit, verifyT
         chain: source.chain,
         contractName: fetched.contractName,
         solcVersion: fetched.compilerVersion,
+        // When the requested address is a proxy we analyze its implementation;
+        // record both so the report can say which bytecode it describes.
+        ...(fetched.proxy
+          ? {
+              implementationAddress: fetched.proxy.implementation,
+              proxyContractName: fetched.proxy.proxyContractName,
+            }
+          : {}),
       };
       // Explorers tell us the exact build the source was verified with. Without
       // this the analyzers fall back to 0.8.24 and solc rejects anything pinned

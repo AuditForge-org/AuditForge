@@ -103,7 +103,28 @@ export interface FetchedSource {
   flattenedSource: string;
   files: Record<string, string>;
   proxyImplementation?: string;
+  /**
+   * Set when the returned source is a proxy's IMPLEMENTATION rather than the
+   * address that was requested. Callers must surface this — the report is about
+   * different bytecode than the user typed.
+   */
+  proxy?: {
+    /** The address the caller asked for (outermost proxy). */
+    address: string;
+    /** The address whose source was actually analyzed (innermost logic). */
+    implementation: string;
+    /** e.g. "TransparentUpgradeableProxy" — the shell we looked through. */
+    proxyContractName?: string;
+  };
 }
+
+/**
+ * Proxies-behind-proxies exist but are rare; this bounds the walk (and any
+ * cycle the explorer's implementation data might describe).
+ */
+const MAX_PROXY_HOPS = 3;
+
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 /**
  * Some chains return SourceCode as a JSON string wrapped in extra braces,
@@ -276,9 +297,20 @@ function flattenFiles(files: Record<string, string>, mainFile?: string): string 
   return `${header}\n\n${parts.join('\n\n')}`;
 }
 
+export interface FetchSourceOptions {
+  /**
+   * When the address is a proxy, analyze its implementation instead (default).
+   * Set false to inspect the proxy shell itself.
+   */
+  followProxy?: boolean;
+  /** Internal: recursion guard for proxy-behind-proxy. */
+  _hop?: number;
+}
+
 export async function fetchEtherscanSource(
   address: string,
-  chain: string
+  chain: string,
+  opts: FetchSourceOptions = {}
 ): Promise<FetchedSource> {
   const cfg = CHAIN_CONFIG[chain];
   if (!cfg) throw new Error(`Unsupported chain: ${chain}`);
@@ -340,11 +372,52 @@ export async function fetchEtherscanSource(
     r.Proxy === '1' || r.IsProxy === true || r.IsProxy === 'true';
   const implementation = r.Implementation || r.ImplementationAddress;
 
-  return {
+  const self: FetchedSource = {
     contractName: r.ContractName,
     compilerVersion: r.CompilerVersion,
     flattenedSource: flattened,
     files,
     proxyImplementation: isProxy && implementation ? implementation : undefined,
   };
+
+  // ─── Follow the proxy ───────────────────────────────────────────────
+  // A proxy's own source is upgrade plumbing (OpenZeppelin's ~8KB of
+  // ERC1967/TransparentUpgradeableProxy); the logic that actually holds funds
+  // lives in the implementation. Auditing the shell scores the wrong bytecode
+  // and reports nothing useful, so by default we analyze what it delegates to
+  // and disclose the swap to the caller.
+  const hop = opts._hop ?? 0;
+  const shouldFollow =
+    opts.followProxy !== false &&
+    isProxy &&
+    !!implementation &&
+    hop < MAX_PROXY_HOPS &&
+    /^0x[0-9a-fA-F]{40}$/.test(implementation) &&
+    implementation.toLowerCase() !== ZERO_ADDRESS &&
+    implementation.toLowerCase() !== address.toLowerCase();
+
+  if (shouldFollow) {
+    try {
+      const impl = await fetchEtherscanSource(implementation as string, chain, {
+        ...opts,
+        _hop: hop + 1,
+      });
+      return {
+        ...impl,
+        proxy: {
+          // Always report the address the CALLER asked for, even several hops
+          // down, paired with the innermost source we ended up analyzing.
+          address,
+          implementation: impl.proxy?.implementation ?? (implementation as string),
+          proxyContractName: r.ContractName,
+        },
+      };
+    } catch {
+      // Implementation unverified or unreachable — fall back to the proxy's own
+      // source rather than failing the scan outright. proxyImplementation still
+      // records the address so the report can say why it looks thin.
+    }
+  }
+
+  return self;
 }

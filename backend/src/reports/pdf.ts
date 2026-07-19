@@ -161,6 +161,17 @@ function drawCover(doc: PDFKit.PDFDocument, report: AuditReport) {
   doc.fillColor(BRAND.onDarkMuted).font('Helvetica').fontSize(10)
      .text(report.source.label, PAGE.m, doc.y + 4, { width: CONTENT_W });
 
+  // The audited address being a proxy means this report describes the
+  // implementation's bytecode, not the address the reader recognises. Say so on
+  // the cover — it changes how every finding below should be read.
+  const implAddr = (report.source as { implementationAddress?: string }).implementationAddress;
+  if (implAddr) {
+    const shell = (report.source as { proxyContractName?: string }).proxyContractName || 'Proxy';
+    doc.fillColor(BRAND.onDarkMuted).font('Helvetica-Oblique').fontSize(8.5)
+       .text(`${safe(shell)} — analysis covers the implementation at ${safe(implAddr)}`,
+             PAGE.m, doc.y + 3, { width: CONTENT_W });
+  }
+
   // score block
   const sy = 320;
   doc.fillColor(t.color).font('Helvetica-Bold').fontSize(96)
