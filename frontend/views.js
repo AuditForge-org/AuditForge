@@ -194,6 +194,7 @@ window.Views = (function () {
               <option value="optimism">Optimism</option>
               <option value="polygon">Polygon</option>
               <option value="bsc">BNB Chain</option>
+              <option value="robinhood">Robinhood Chain</option>
               <option value="ethw">EthereumPoW</option>
             </select>
           </div>
@@ -323,7 +324,7 @@ window.Views = (function () {
     <div class="faq-list reveal">
       <div class="faq-item"><button class="faq-q"><span class="qn">01</span><span class="qt">Is Audit Forge a replacement for a professional audit?</span><span class="ic"></span></button><div class="faq-a"><div class="inner">No — and we say so plainly. Audit Forge automates the first pass: it surfaces the issues automated tooling can find, fast, before you spend on a manual engagement. A human auditor still catches business-logic flaws, economic attacks and design errors that no static tool can reason about.</div></div></div>
       <div class="faq-item"><button class="faq-q"><span class="qn">02</span><span class="qt">What does the 0–100 score mean?</span><span class="ic"></span></button><div class="faq-a"><div class="inner">It's a weighted roll-up of every reconciled finding — severity times consensus. A high score means few issues and broad engine agreement that the contract is clean; it is a signal, not a guarantee.</div></div></div>
-      <div class="faq-item"><button class="faq-q"><span class="qn">03</span><span class="qt">Which networks can I scan by contract address?</span><span class="ic"></span></button><div class="faq-a"><div class="inner">Any chain with a verified-source explorer: Ethereum, Base, Arbitrum, Optimism, Polygon, BNB Chain and EthereumPoW. We pull verified source directly from the explorer and run the full engine suite.</div></div></div>
+      <div class="faq-item"><button class="faq-q"><span class="qn">03</span><span class="qt">Which networks can I scan by contract address?</span><span class="ic"></span></button><div class="faq-a"><div class="inner">Any chain with a verified-source explorer: Ethereum, Base, Arbitrum, Optimism, Polygon, BNB Chain and Robinhood Chain. We pull verified source directly from the explorer and run the full engine suite.</div></div></div>
       <div class="faq-item"><button class="faq-q"><span class="qn">04</span><span class="qt">What is "consensus" and why does it matter?</span><span class="ic"></span></button><div class="faq-a"><div class="inner">Every engine reports differently and produces false positives. We normalize each finding to its SWC category and count how many independent tools flagged it. Agreement across tools that work in completely different ways is the strongest signal that a finding is real.</div></div></div>
       <div class="faq-item"><button class="faq-q"><span class="qn">05</span><span class="qt">Is my code private?</span><span class="ic"></span></button><div class="faq-a"><div class="inner">The six analysis engines run in an isolated, network-disabled sandbox and never send your code anywhere. To write the plain-English <b>AI brief</b>, however, your source is sent to a third-party LLM provider (Groq) — this happens automatically on every scan. When you're signed in, your audit is listed in the public registry by default; switch off the <b>Publish to registry</b> toggle before scanning to keep a report private. Anonymous scans are never published.</div></div></div>
       <div class="faq-item"><button class="faq-q"><span class="qn">06</span><span class="qt">How long does a scan take?</span><span class="ic"></span></button><div class="faq-a"><div class="inner">Most scans finish in under 60 seconds. Enabling Echidna property fuzzing adds a few minutes because it executes thousands of adversarial transaction sequences against your invariants.</div></div></div>
@@ -541,7 +542,7 @@ window.Views = (function () {
         <h1>${escapeHtml((r.contract && r.contract.contractName) || (r.source && r.source.contractName) || (r.source && r.source.label) || 'Contract')}</h1>
         <div class="meta-grid">
           <div><span class="k">Source</span><span class="v">${escapeHtml((r.source && r.source.label) || 'paste')}</span></div>
-          <div><span class="k">Network</span><span class="v">${escapeHtml((r.source && r.source.chain) || (r.source && r.source.type) || '—')}</span></div>
+          <div><span class="k">Network</span><span class="v">${escapeHtml(chainName(r.source && r.source.chain) || (r.source && r.source.type) || '—')}</span></div>
           <div><span class="k">Audited</span><span class="v">${escapeHtml(new Date(r.createdAt || Date.now()).toISOString().slice(0, 16).replace('T', ' '))} UTC</span></div>
           <div><span class="k">Engines run</span><span class="v"><span class="ok">${toolsRun.length} / 6</span> · ${((r.durationMs || 0) / 1000).toFixed(1)}s total</span></div>
           <div><span class="k">Lines</span><span class="v">${(r.contract && r.contract.lines) || '—'}</span></div>
@@ -675,7 +676,7 @@ window.Views = (function () {
 <section class="page-section">
   <div class="wrap">
     <div class="toolbar reveal">
-      <div class="control"><label>Chain</label><select id="reg-chain"><option value="">All chains</option><option value="ethereum">Ethereum</option><option value="base">Base</option><option value="arbitrum">Arbitrum</option><option value="optimism">Optimism</option><option value="polygon">Polygon</option><option value="bsc">BNB Chain</option><option value="ethw">EthereumPoW</option></select></div>
+      <div class="control"><label>Chain</label><select id="reg-chain"><option value="">All chains</option><option value="ethereum">Ethereum</option><option value="base">Base</option><option value="arbitrum">Arbitrum</option><option value="optimism">Optimism</option><option value="polygon">Polygon</option><option value="bsc">BNB Chain</option><option value="robinhood">Robinhood Chain</option><option value="ethw">EthereumPoW</option></select></div>
       <div class="control"><label>Sort</label><select id="reg-sort"><option value="published_desc">Newest first</option><option value="score_desc">Highest score</option><option value="score_asc">Lowest score</option><option value="critical_desc">Most critical</option></select></div>
       <div class="control grow"><label>Search</label><input type="text" id="reg-search" placeholder="name, address, repo …"></div>
     </div>
@@ -691,7 +692,7 @@ window.Views = (function () {
       const sc = regScoreClass(e.score);
       const name = escapeHtml(e.contractName || 'Unnamed contract');
       const sub = escapeHtml(e.address ? (e.address.slice(0, 6) + '…' + e.address.slice(-4)) : (e.repo || 'paste-source'));
-      const chain = e.chain ? escapeHtml(e.chain.replace(/^\w/, c => c.toUpperCase())) : 'Offchain';
+      const chain = e.chain ? escapeHtml(chainName(e.chain)) : 'Offchain';
       let sev = '';
       if (e.criticalCount) sev += `<span class="sc-crit">${e.criticalCount} crit</span>`;
       if (e.highCount) sev += `<span class="sc-high">${e.highCount} high</span>`;
@@ -1001,6 +1002,15 @@ window.Views = (function () {
   // ════════════════════════════════════════════════════════════════
   // ENGINES — the toolchain, with credits + links
   // ════════════════════════════════════════════════════════════════
+  // Pretty names for chain slugs. Mirrors CHAIN_CONFIG in the backend's
+  // source/etherscan.ts — frontend/ has no bundler so it cannot import it.
+  // Keep in sync when adding a chain.
+  const CHAIN_NAMES = {
+    ethereum: 'Ethereum', base: 'Base', arbitrum: 'Arbitrum', optimism: 'Optimism',
+    polygon: 'Polygon', bsc: 'BNB Chain', ethw: 'EthereumPoW', robinhood: 'Robinhood Chain',
+  };
+  const chainName = (slug) => (slug && CHAIN_NAMES[slug]) || slug || '';
+
   const ENGINE_INFO = [
     { name: 'Slither', org: 'Trail of Bits', method: 'Static analysis', mcolor: 'var(--c-static)', license: 'AGPL-3.0', ver: '0.10.4',
       repo: 'https://github.com/crytic/slither', site: 'https://www.trailofbits.com',

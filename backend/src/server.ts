@@ -120,7 +120,7 @@ const SubmitAuditSchema = z.object({
     z.object({
       type: z.literal('address'),
       address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
-      chain: z.enum(['ethereum', 'ethw', 'bsc', 'polygon', 'arbitrum', 'optimism', 'base']),
+      chain: z.enum(['ethereum', 'ethw', 'bsc', 'polygon', 'arbitrum', 'optimism', 'base', 'robinhood']),
     }),
     z.object({
       type: z.literal('github'),

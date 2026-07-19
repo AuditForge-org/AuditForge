@@ -22,6 +22,7 @@ import { existsSync } from 'fs';
 import { Resvg } from '@resvg/resvg-js';
 import type { AuditReport } from '../types/finding';
 import type { RegistryEntry } from '../registry/store';
+import { chainDisplayName } from '../source/etherscan';
 
 function escapeXml(s: string): string {
   return String(s).replace(/[<>&"']/g, (c) =>
@@ -131,7 +132,7 @@ export function renderOgCardSvg(report: AuditReport): string {
   const engines = (report.toolsRun || []).length;
   const c = sevCounts4(report);
   const src =
-    report.source && report.source.chain ? report.source.chain.toUpperCase()
+    report.source && report.source.chain ? chainDisplayName(report.source.chain).toUpperCase()
     : report.source && report.source.type === 'github' ? 'GITHUB REPO'
     : 'SOLIDITY SOURCE';
 
@@ -320,7 +321,7 @@ export function renderRegistryPage(entries: RegistryEntry[], total: number, orig
   const rows = entries.map(e => {
     const color = cardTierColor(e.score);
     const name = escapeXml(e.contractName || 'Contract');
-    const chain = e.chain ? escapeXml(e.chain) : (e.repo ? 'repo' : 'source');
+    const chain = e.chain ? escapeXml(chainDisplayName(e.chain)) : (e.repo ? 'repo' : 'source');
     const loc = e.address ? escapeXml(shortAddr(e.address)) : (e.repo ? escapeXml(e.repo) : '');
     const meta = [chain, loc, `${e.findingsCount} finding${e.findingsCount === 1 ? '' : 's'}`, e.verifiedSource ? '✓ verified source' : '']
       .filter(Boolean).join(' · ');

@@ -58,8 +58,9 @@ score reflects cross-engine agreement, not any single tool's noise.
 
 Address mode fetches verified source via the **Etherscan V2 multichain** API —
 one `ETHERSCAN_API_KEY` covers Ethereum, BSC, Polygon, Arbitrum, Optimism, and
-Base. (EthereumPoW has no maintained public source API and is not currently
-supported in address mode — use paste mode.)
+Base. **Robinhood Chain** (chain id 4663) is served by its public Blockscout
+explorer and needs no API key. (EthereumPoW has no maintained public source API
+and is not currently supported in address mode — use paste mode.)
 
 ## Running it
 
