@@ -120,6 +120,67 @@ describe('Blockscout dialect (Robinhood Chain)', () => {
     if (prev !== undefined) process.env.ETHERSCAN_API_KEY = prev;
   });
 
+  // Solidity requires a base contract to be defined before the contract that
+  // derives from it within one source unit. Emitting the entry contract first
+  // fails the whole scan with "Definition of base has to precede definition of
+  // derived contract" — verified against the real UniswapV3Factory, which only
+  // analyzed (33 contracts, 70 findings) once dependencies led.
+  it('emits dependencies before the contract that imports them', async () => {
+    stubExplorer({
+      SourceCode: 'import "./Base.sol";\ncontract Entry is Base {}',
+      ContractName: 'Entry',
+      CompilerVersion: 'v0.7.6+commit.7338295f',
+      FileName: 'src/Entry.sol',
+      AdditionalSources: [
+        { Filename: 'src/Base.sol', SourceCode: 'import "./Util.sol";\ncontract Base {}' },
+        { Filename: 'src/Util.sol', SourceCode: 'library Util {}' },
+      ],
+    });
+    const { flattenedSource: out } = await fetchEtherscanSource('0xabc', 'robinhood');
+    const iUtil = out.indexOf('library Util');
+    const iBase = out.indexOf('contract Base');
+    const iEntry = out.indexOf('contract Entry');
+    expect(iUtil).toBeGreaterThan(-1);
+    expect(iUtil).toBeLessThan(iBase);   // transitive dep first
+    expect(iBase).toBeLessThan(iEntry);  // base before derived
+    expect(out).not.toMatch(/^\s*import\s/m);
+  });
+
+  it('hoists exactly one SPDX and prefers the entry contract pragma', async () => {
+    stubExplorer({
+      SourceCode: '// SPDX-License-Identifier: BUSL-1.1\npragma solidity =0.7.6;\nimport "./Dep.sol";\ncontract Entry is Dep {}',
+      ContractName: 'Entry',
+      CompilerVersion: 'v0.7.6+commit.7338295f',
+      FileName: 'src/Entry.sol',
+      AdditionalSources: [
+        { Filename: 'src/Dep.sol', SourceCode: '// SPDX-License-Identifier: MIT\npragma solidity >=0.5.0;\ncontract Dep {}' },
+      ],
+    });
+    const { flattenedSource: out } = await fetchEtherscanSource('0xabc', 'robinhood');
+    // solc rejects a unit carrying multiple SPDX identifiers.
+    expect(out.match(/SPDX-License-Identifier:/g)).toHaveLength(1);
+    // The entry's pragma must win even though it is emitted LAST.
+    expect(out.match(/pragma solidity[^;]*;/g)).toEqual(['pragma solidity =0.7.6;']);
+    expect(out.indexOf('pragma solidity')).toBeLessThan(out.indexOf('contract Dep'));
+  });
+
+  it('survives circular imports without hanging or dropping files', async () => {
+    stubExplorer({
+      SourceCode: 'import "./A.sol";\ncontract Entry {}',
+      ContractName: 'Entry',
+      CompilerVersion: 'v0.8.20+commit.a1b2c3d4',
+      FileName: 'E.sol',
+      AdditionalSources: [
+        { Filename: 'A.sol', SourceCode: 'import "./B.sol";\ninterface A {}' },
+        { Filename: 'B.sol', SourceCode: 'import "./A.sol";\ninterface B {}' },
+      ],
+    });
+    const { flattenedSource: out } = await fetchEtherscanSource('0xabc', 'robinhood');
+    for (const frag of ['interface A', 'interface B', 'contract Entry']) {
+      expect(out).toContain(frag);
+    }
+  });
+
   it('still demands a key for chains that declare one', async () => {
     const prev = process.env.ETHERSCAN_API_KEY;
     delete process.env.ETHERSCAN_API_KEY;

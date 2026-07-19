@@ -23,6 +23,7 @@ import IORedis from 'ioredis';
 import { z } from 'zod';
 import { randomUUID } from 'crypto';
 import { fetchEtherscanSource } from './source/etherscan';
+import { resolveSolcVersion } from './engines/runner';
 import { fetchGithubSource } from './source/github';
 import { getReport, listReports } from './db/reports';
 import { renderBadgeSvg, notFoundBadgeSvg, renderOgShell, renderOgPng, renderRegistryPage } from './share/og';
@@ -271,8 +272,11 @@ app.post('/api/audits', RATE_LIMITS.auditDaily, RATE_LIMITS.auditSubmit, verifyT
     return res.status(400).json({ error: 'Invalid payload', details: parsed.error.format() });
   }
 
-  const { source, solcVersion, publish } = parsed.data;
+  const { source, publish } = parsed.data;
   let { tools, enableFuzzing } = parsed.data;
+  // May be upgraded below to the compiler the contract was actually verified
+  // with, when the caller didn't pin one explicitly.
+  let solcVersion = parsed.data.solcVersion;
 
   // Publish-by-default, but only for signed-in users — anonymous audits are
   // never auto-listed in the public registry. `publish !== false` keeps the
@@ -316,6 +320,13 @@ app.post('/api/audits', RATE_LIMITS.auditDaily, RATE_LIMITS.auditSubmit, verifyT
         contractName: fetched.contractName,
         solcVersion: fetched.compilerVersion,
       };
+      // Explorers tell us the exact build the source was verified with. Without
+      // this the analyzers fall back to 0.8.24 and solc rejects anything pinned
+      // to an older pragma, failing the whole scan. An explicit caller-supplied
+      // version still wins.
+      if (!solcVersion) {
+        solcVersion = resolveSolcVersion(fetched.compilerVersion) ?? solcVersion;
+      }
     } else {
       const fetched = await fetchGithubSource(source.repo, source.path, source.ref);
       code = fetched.flattenedSource;

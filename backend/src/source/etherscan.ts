@@ -144,7 +144,7 @@ function parseSourceCode(
       for (const [path, val] of Object.entries(sources)) {
         files[path] = (val as { content: string }).content;
       }
-      return { files, flattened: flattenFiles(files) };
+      return { files, flattened: flattenFiles(files, compilationTargetOf(parsed)) };
     } catch (e) {
       // Fall through to plain
     }
@@ -158,7 +158,7 @@ function parseSourceCode(
         for (const [path, val] of Object.entries(parsed.sources)) {
           files[path] = (val as { content: string }).content;
         }
-        return { files, flattened: flattenFiles(files) };
+        return { files, flattened: flattenFiles(files, compilationTargetOf(parsed)) };
       }
     } catch {}
   }
@@ -179,42 +179,101 @@ function parseSourceCode(
  * This is the minimal flattener — for production use, hand off to
  * `forge flatten` or `truffle-flattener` which do proper symbol resolution.
  */
-function flattenFiles(files: Record<string, string>, mainFile?: string): string {
-  const depth = (p: string) => p.match(/\//g)?.length || 0;
-  const sorted = Object.keys(files).sort((a, b) => {
-    // Emit the entry contract first. The SPDX/pragma dedup below is first-wins,
-    // so this makes the *entry's* pragma the surviving one by construction —
-    // otherwise the winner is whichever file happens to sit at the shallowest
-    // path, and a dependency's narrower pragma can make the whole flattened
-    // unit refuse to compile (which fails the entire scan, not one file).
-    if (a === mainFile) return -1;
-    if (b === mainFile) return 1;
-    return depth(a) - depth(b);
-  });
+/**
+ * Etherscan's standard-JSON payload names the file being verified under
+ * settings.compilationTarget ({ "<path>": "<ContractName>" }). Using it lets
+ * the flattener treat that file as the entry contract — same as Blockscout's
+ * FileName — so its pragma is the one hoisted.
+ */
+function compilationTargetOf(parsed: unknown): string | undefined {
+  const target = (parsed as { settings?: { compilationTarget?: Record<string, string> } })
+    ?.settings?.compilationTarget;
+  return target && typeof target === 'object' ? Object.keys(target)[0] : undefined;
+}
 
-  let spdxSeen = false;
-  let pragmaSeen = false;
+/**
+ * Order files so each one appears AFTER everything it imports.
+ *
+ * Solidity requires a base contract to be defined before the contract deriving
+ * from it *within a source unit*, so a flattened file whose entry contract
+ * leads fails outright with "Definition of base has to precede definition of
+ * derived contract" — that kills the whole scan, not one file. We therefore
+ * topologically sort by the import graph (resolving specifiers by basename,
+ * since verified sources mix relative and package-style paths) and emit the
+ * entry contract last. Cycles are tolerated: Solidity permits circular imports
+ * between interfaces, and the on-stack check just breaks the loop.
+ */
+function orderForCompilation(files: Record<string, string>, mainFile?: string): string[] {
+  const names = Object.keys(files);
+  const basename = (p: string) => p.split('/').pop() || p;
+
+  const byBasename = new Map<string, string[]>();
+  for (const n of names) byBasename.set(basename(n), [...(byBasename.get(basename(n)) || []), n]);
+
+  const deps = new Map<string, string[]>();
+  for (const n of names) {
+    const specs = [...files[n].matchAll(/import\s+[^;]*?['"]([^'"]+)['"]\s*;/g)].map((m) => m[1]);
+    const resolved: string[] = [];
+    for (const spec of specs) {
+      const cands = byBasename.get(basename(spec)) || [];
+      const hit = cands.find((c) => c === spec)
+        || cands.find((c) => c.endsWith(spec.replace(/^\.\//, '')))
+        || cands[0];
+      if (hit && hit !== n) resolved.push(hit);
+    }
+    deps.set(n, resolved);
+  }
+
+  const out: string[] = [];
+  const done = new Set<string>();
+  const onStack = new Set<string>();
+  const visit = (n: string): void => {
+    if (done.has(n) || onStack.has(n)) return;
+    onStack.add(n);
+    for (const d of deps.get(n) || []) visit(d);
+    onStack.delete(n);
+    done.add(n);
+    out.push(n);
+  };
+
+  // Deepest paths first is a decent tie-break for files the import scan can't
+  // link; the entry contract is visited last so it lands at the end.
+  const depth = (p: string) => p.match(/\//g)?.length || 0;
+  names.filter((n) => n !== mainFile).sort((a, b) => depth(b) - depth(a)).forEach(visit);
+  if (mainFile && files[mainFile]) visit(mainFile);
+  return out;
+}
+
+function flattenFiles(files: Record<string, string>, mainFile?: string): string {
+  const order = orderForCompilation(files, mainFile);
+
+  // Hoist a single SPDX + `pragma solidity` to the top rather than keeping the
+  // first one encountered: solc rejects a unit with multiple SPDX identifiers,
+  // and now that the entry contract is emitted LAST its pragma would otherwise
+  // lose to a dependency's (a narrower one makes the unit uncompilable).
+  // Non-`solidity` pragmas (abicoder, experimental) stay with their file.
+  let spdx: string | undefined;
+  let pragma: string | undefined;
   const parts: string[] = [];
 
-  for (const path of sorted) {
+  for (const path of order) {
     let content = files[path];
-    // Strip imports
     content = content.replace(/^\s*import\s+[^;]+;[ \t]*\n?/gm, '');
-    // Dedupe SPDX
-    content = content.replace(/^\s*\/\/\s*SPDX-License-Identifier:[^\n]*\n?/gm, (m) => {
-      if (spdxSeen) return '';
-      spdxSeen = true;
-      return m;
+    content = content.replace(/^[ \t]*\/\/[ \t]*SPDX-License-Identifier:[ \t]*([^\n]*)\n?/gm, (_m, id: string) => {
+      if (!spdx) spdx = id.trim();
+      return '';
     });
-    // Dedupe pragma
-    content = content.replace(/^\s*pragma\s+[^;]+;[ \t]*\n?/gm, (m) => {
-      if (pragmaSeen) return '';
-      pragmaSeen = true;
-      return m;
+    content = content.replace(/^[ \t]*pragma\s+solidity[^;]+;[ \t]*\n?/gm, (m) => {
+      // Prefer the entry contract's pragma — it is the version the source was
+      // actually verified with.
+      if (path === mainFile || !pragma) pragma = m.trim();
+      return '';
     });
     parts.push(`// ─── ${path} ─────────────────────────────────────\n${content}`);
   }
-  return parts.join('\n\n');
+
+  const header = `// SPDX-License-Identifier: ${spdx || 'UNLICENSED'}\n${pragma || ''}`.trimEnd();
+  return `${header}\n\n${parts.join('\n\n')}`;
 }
 
 export async function fetchEtherscanSource(

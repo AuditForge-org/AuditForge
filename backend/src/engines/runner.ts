@@ -87,6 +87,40 @@ async function cleanup(dir: string): Promise<void> {
   await fs.rm(dir, { recursive: true, force: true });
 }
 
+/**
+ * solc builds baked into the engine images.
+ *
+ * Engine containers run with `--network none`, so solc-select can NOT download
+ * a missing compiler at scan time — asking for a version that isn't here fails
+ * the run. This is the INTERSECTION of what the slither and mythril images
+ * ship (mythril has no 0.8.17), because one version is handed to both.
+ *
+ * Keep in sync with the images: `solc-select versions` inside each.
+ */
+export const AVAILABLE_SOLC_VERSIONS = ['0.6.12', '0.7.6', '0.8.20', '0.8.24'] as const;
+
+export const DEFAULT_SOLC_VERSION = '0.8.24';
+
+/**
+ * Pick the compiler for a verified contract.
+ *
+ * Explorers report the exact build the source was verified with — e.g.
+ * `v0.7.6+commit.7338295f`. Ignoring it and defaulting to 0.8.24 makes solc
+ * reject any contract pinned to an older pragma ("Source file requires
+ * different compiler version"), which fails the entire scan. Returns undefined
+ * when we have nothing better than the default, so callers can leave the
+ * existing behaviour untouched.
+ */
+export function resolveSolcVersion(reported?: string): string | undefined {
+  if (!reported) return undefined;
+  // Vyper and other non-solc toolchains are not ours to pick a compiler for.
+  if (/vyper/i.test(reported)) return undefined;
+  const m = /(\d+)\.(\d+)\.(\d+)/.exec(reported);
+  if (!m) return undefined;
+  const exact = `${m[1]}.${m[2]}.${m[3]}`;
+  return (AVAILABLE_SOLC_VERSIONS as readonly string[]).includes(exact) ? exact : undefined;
+}
+
 // ─── SLITHER ─────────────────────────────────────────────────────────────
 
 export async function runSlither(code: string, solcVersion = '0.8.24'): Promise<RunResult> {
