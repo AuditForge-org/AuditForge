@@ -23,6 +23,7 @@ import { Resvg } from '@resvg/resvg-js';
 import type { AuditReport } from '../types/finding';
 import type { RegistryEntry } from '../registry/store';
 import { chainDisplayName } from '../source/etherscan';
+import { CONDO } from '../brand';
 
 function escapeXml(s: string): string {
   return String(s).replace(/[<>&"']/g, (c) =>
@@ -168,7 +169,8 @@ export function renderOgCardSvg(report: AuditReport): string {
   <text x="46" y="15" font-family="JetBrains Mono" font-weight="600" font-size="20" letter-spacing="5" fill="#eef0f2">AUDIT FORGE</text>
   <text x="46" y="33" font-family="JetBrains Mono" font-size="11" letter-spacing="3" fill="#6e7580">MULTI-ENGINE AUDIT CONSOLE</text>
 </g>
-<text x="1130" y="74" text-anchor="end" font-family="JetBrains Mono" font-size="15" letter-spacing="2" fill="#8b929c">auditforge.org</text>
+<text x="1130" y="66" text-anchor="end" font-family="JetBrains Mono" font-size="15" letter-spacing="2" fill="#8b929c">auditforge.org</text>
+<text x="1130" y="88" text-anchor="end" font-family="JetBrains Mono" font-size="11" letter-spacing="3" fill="#3fbf3a">POWERED BY CONDO</text>
 <text x="70" y="214" font-family="JetBrains Mono" font-size="15" letter-spacing="4" fill="${color}">${escapeXml(src)} · SECURITY AUDIT</text>
 <text x="68" y="300" font-family="Inter" font-weight="700" font-size="${nameFont}" fill="#f3f5f7">${escapeXml(name)}</text>
 <text x="70" y="360" font-family="JetBrains Mono" font-size="17" letter-spacing="1" fill="#aeb4bd">${engines} / 6 engines · consensus-reconciled · SWC-mapped</text>
@@ -211,7 +213,11 @@ function sevCountsAll(report: AuditReport): Record<string, number> {
 }
 
 const RP_TOPBAR = `<header class="topbar"><div class="wrap"><a href="/" class="brand"><span class="mark"><svg viewBox="0 0 32 32" fill="none"><path d="M16 2 L29 16 L16 30 L3 16 Z" stroke="currentColor" stroke-width="1.6"></path><path d="M16 9 L23 16 L16 23 L9 16 Z" fill="currentColor" fill-opacity="0.16" stroke="currentColor" stroke-width="1.4"></path></svg></span><span class="name">AUDIT FORGE<small>MULTI-ENGINE AUDIT CONSOLE</small></span></a><nav class="nav"><a href="/#/scan">Scan</a><a href="/engines/">Engines</a><a href="/registry">Registry</a></nav></div></header>`;
-const RP_FOOTER = `<footer class="footer"><div class="wrap"><div class="footer-base"><span>Audit Forge automates the first pass — it is <b>not</b> a substitute for a professional manual audit. Provided without warranty.</span><span class="legal-links"><a href="/terms/">Terms</a> · <a href="/privacy/">Privacy</a> · <a href="/engines/">Engines</a></span></div></div></footer>`;
+const RP_FOOTER = `<footer class="footer"><div class="wrap"><div class="footer-base"><span>Audit Forge automates the first pass — it is <b>not</b> a substitute for a professional manual audit. Provided without warranty. <b>${CONDO.poweredBy}.</b></span><span class="legal-links"><a href="/terms/">Terms</a> · <a href="/privacy/">Privacy</a> · <a href="/engines/">Engines</a> · <a href="${CONDO.url}" target="_blank" rel="noopener">Condo</a></span></div></div></footer>`;
+
+/** "Support the cause" block for the server-rendered report page. */
+const RP_SUPPORT = `<section class="rp-support"><div class="rp-support-l"><div class="rp-support-brand"><img src="/condo-logo.png" alt="Condo bull and bear" width="55" height="27"><span>CONDO</span><em>${CONDO.poweredBy}</em></div><h2>Support the cause</h2><p>${CONDO.supportLead}</p></div><div class="rp-support-r"><span class="k">Contribution address · any EVM chain</span><code>${CONDO.wallet}</code><p class="rp-disc">${CONDO.supportFine}</p></div></section>`;
+const RP_SUPPORT_CSS = `.rp-support{display:grid;grid-template-columns:1.2fr 1fr;gap:28px;align-items:center;border:1px solid rgba(63,191,58,.34);border-radius:16px;padding:26px 28px;margin:38px 0 8px;background:radial-gradient(560px 220px at 0% 120%,rgba(63,191,58,.12),transparent 70%),var(--panel)}.rp-support h2{margin:6px 0 8px}.rp-support p{color:var(--ink-2);font-size:14px;line-height:1.65;margin:0}.rp-support-brand{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.18em;color:var(--ink)}.rp-support-brand em{font-style:normal;font-weight:400;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-3);padding-left:12px;border-left:1px solid var(--line-2)}.rp-support-r{border:1px solid var(--line-2);border-radius:12px;background:var(--panel-2);padding:16px 18px}.rp-support-r .k{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}.rp-support-r code{display:block;font-family:var(--mono);font-size:12.5px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px 12px;overflow-wrap:anywhere;word-break:break-all;margin-bottom:10px}@media(max-width:700px){.rp-support{grid-template-columns:1fr}}`;
 const RP_CSS = `.rp{max-width:880px;margin:0 auto;padding:48px 28px 60px}.rp-crumb{font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);margin-bottom:14px}.rp-crumb a{color:var(--amber)}.rp h1{font-family:var(--sans);font-weight:700;letter-spacing:-.02em;font-size:clamp(30px,4vw,44px);margin:0 0 6px;color:var(--ink)}.rp-src{font-family:var(--mono);font-size:12.5px;color:var(--ink-3);margin:0 0 24px;overflow-wrap:anywhere}.rp-score{display:flex;align-items:baseline;gap:18px;margin:0 0 22px;flex-wrap:wrap}.rp-num{font-family:var(--sans);font-weight:700;font-size:64px;line-height:1;color:var(--tc)}.rp-num small{font-size:20px;color:var(--ink-4);font-weight:500}.rp-grade{font-family:var(--mono);font-size:13px;letter-spacing:.1em;text-transform:uppercase;color:var(--tc)}.rp-strip{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--line-2);border-radius:12px;overflow:hidden;margin-bottom:30px}.rp-strip>div{padding:14px;text-align:center;border-right:1px solid var(--line)}.rp-strip>div:last-child{border-right:0}.rp-strip .n{display:block;font-family:var(--sans);font-weight:700;font-size:24px;color:var(--ink)}.rp-strip .l{font-family:var(--mono);font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}.rp h2{font-family:var(--sans);font-weight:700;font-size:22px;margin:34px 0 14px;color:var(--ink)}.rp-brief p{color:var(--ink-2);font-size:15px;line-height:1.7}.rp-f{border:1px solid var(--line-2);border-radius:12px;padding:16px 18px;margin-bottom:12px;background:var(--panel)}.rp-fh{display:flex;align-items:center;gap:12px}.rp-fh h3{margin:0;font-size:15px;font-weight:600;color:var(--ink)}.rp-sev{font-family:var(--mono);font-size:9px;font-weight:700;letter-spacing:.06em;padding:3px 8px;border-radius:5px;color:#fff;flex-shrink:0}.rp-sev.s-critical{background:#dc2626}.rp-sev.s-high{background:#ea580c}.rp-sev.s-medium{background:#d97706}.rp-sev.s-low{background:#0891b2}.rp-sev.s-info{background:#6b7280}.rp-m{font-family:var(--mono);font-size:11px;color:var(--ink-3);margin:6px 0 0}.rp-f p{color:var(--ink-2);font-size:13.5px;line-height:1.6;margin:8px 0 0}.rp-cta{margin:34px 0 18px;display:flex;gap:12px;flex-wrap:wrap}.rp-disc{color:var(--ink-3);font-size:12px}.rp-disc a{color:var(--amber)}@media(max-width:560px){.rp-strip{grid-template-columns:repeat(2,1fr)}}`;
 
 /**
@@ -225,7 +231,7 @@ export function renderOgShell(
   origin: string,
   published = false,
 ): string {
-  const css = `<link rel="stylesheet" href="${escapeXml(origin)}/auditforge.css?v=20260621b"><link rel="stylesheet" href="${escapeXml(origin)}/auditforge-pages.css?v=20260621b"><style>${RP_CSS}</style>`;
+  const css = `<link rel="stylesheet" href="${escapeXml(origin)}/auditforge.css?v=20260906a"><link rel="stylesheet" href="${escapeXml(origin)}/auditforge-pages.css?v=20260906a"><style>${RP_CSS}${RP_SUPPORT_CSS}</style>`;
   const head = (title: string, desc: string, robots: string, extra = '') =>
     `<!DOCTYPE html><html lang="en" data-theme="dark" data-accent="emerald" data-headline="sans"><head>` +
     `<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">` +
@@ -271,13 +277,14 @@ export function renderOgShell(
 <main class="rp">
   <div class="rp-crumb"><a href="/#/registry">Registry</a> / Report</div>
   <h1>${escapeXml(name)}</h1>
-  <p class="rp-src">${escapeXml(report.source.label)} · ${engines} engines · audited by Audit Forge</p>
+  <p class="rp-src">${escapeXml(report.source.label)} · ${engines} engines · audited by Audit Forge · ${CONDO.poweredBy}</p>
   <div class="rp-score" style="--tc:${t.color}"><div class="rp-num">${report.score}<small>/100</small></div><div class="rp-grade">${escapeXml(report.grade)} · ${escapeXml(t.label)}</div></div>
   <div class="rp-strip">${strip}</div>
   ${report.aiBrief ? `<section class="rp-brief"><h2>Summary</h2><p>${escapeXml(String(report.aiBrief).replace(/\s+/g, ' ').trim().slice(0, 1400))}</p></section>` : ''}
   <section><h2>${(report.consensusFindings || []).length} findings</h2>${findingHtml || '<p class="rp-disc">No consensus findings were identified.</p>'}</section>
   <p class="rp-cta"><a class="btn btn-primary" href="${escapeXml(hashUrl)}">Open the interactive report →</a><a class="btn btn-ghost" href="/#/scan">Audit your own contract</a></p>
-  <p class="rp-disc">Automated multi-engine analysis by <a href="/">Audit Forge</a> — a free, open-source smart-contract security scanner. Not a substitute for a professional manual audit.</p>
+  <p class="rp-disc">Automated multi-engine analysis by <a href="/">Audit Forge</a> — a free, open-source smart-contract security scanner, <a href="${CONDO.productUrl}" target="_blank" rel="noopener">${CONDO.poweredBy.toLowerCase()}</a>. Not a substitute for a professional manual audit.</p>
+  ${RP_SUPPORT}
 </main>${RP_FOOTER}</body></html>`;
 }
 

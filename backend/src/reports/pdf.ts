@@ -9,6 +9,7 @@
 
 import PDFDocument from 'pdfkit';
 import { AuditReport, ConsensusFinding, Severity } from '../types/finding';
+import { CONDO } from '../brand';
 
 // ── palette ─────────────────────────────────────────────────────────────
 const BRAND = {
@@ -16,6 +17,8 @@ const BRAND = {
   green:   '#3BDDA4',   // brand mint (on dark)
   greenDk: '#0B8B5F',   // brand green (on white — legible)
   ink:     '#181A1D',
+  condo:   '#3fbf3a',   // Condo candlestick green (on dark)
+  condoDk: '#2fa32b',   // Condo green (on white)
   muted:   '#6B7280',
   faint:   '#9AA0A8',
   line:    '#E5E7EB',
@@ -105,7 +108,7 @@ export function buildPdf(report: AuditReport): Promise<Buffer> {
       bufferPages: true,
       info: {
         Title: `Audit Forge Report — ${contractName(report)}`,
-        Author: 'Audit Forge',
+        Author: `Audit Forge (${CONDO.poweredBy.toLowerCase()})`,
         Subject: 'Smart Contract Security Audit',
         CreationDate: new Date(report.createdAt),
       },
@@ -122,6 +125,7 @@ export function buildPdf(report: AuditReport): Promise<Buffer> {
     drawFindings(doc, report);
     drawEngines(doc, report);
     drawAppendix(doc, report);
+    drawSupport(doc);
     drawFooters(doc);   // page numbers + auditforge.org on every non-cover page
 
     doc.end();
@@ -151,7 +155,9 @@ function drawCover(doc: PDFKit.PDFDocument, report: AuditReport) {
   doc.fillColor(BRAND.onDarkMuted).font('Helvetica').fontSize(8)
      .text('MULTI-ENGINE AUDIT CONSOLE', lx + 40, ly + 22, { characterSpacing: 2 });
   doc.fillColor(BRAND.onDarkMuted).font('Helvetica').fontSize(10)
-     .text('auditforge.org', PAGE.w - PAGE.m - 120, ly + 6, { width: 120, align: 'right', characterSpacing: 1 });
+     .text('auditforge.org', PAGE.w - PAGE.m - 160, ly - 1, { width: 160, align: 'right', characterSpacing: 1 });
+  doc.fillColor(BRAND.condo).font('Helvetica-Bold').fontSize(7.5)
+     .text(CONDO.poweredBy.toUpperCase(), PAGE.w - PAGE.m - 160, ly + 15, { width: 160, align: 'right', characterSpacing: 2 });
 
   // eyebrow + contract name
   doc.fillColor(t.color).font('Helvetica-Bold').fontSize(11)
@@ -217,6 +223,10 @@ function drawCover(doc: PDFKit.PDFDocument, report: AuditReport) {
   doc.fillColor(BRAND.faint).font('Helvetica-Oblique').fontSize(7.5)
      .text('Automated first-pass analysis — not a substitute for a professional manual audit.',
        PAGE.m, PAGE.h - 46, { width: CONTENT_W });
+  // Attribution, right-aligned in the bottom band.
+  doc.fillColor(BRAND.condo).font('Helvetica-Bold').fontSize(8)
+     .text(`${CONDO.poweredBy.toUpperCase()}  ·  ${CONDO.url.replace(/^https?:\/\//, '')}`,
+       PAGE.w - PAGE.m - 220, PAGE.h - 78, { width: 220, align: 'right', characterSpacing: 1.5, link: CONDO.url });
 }
 
 // ── EXECUTIVE SUMMARY ─────────────────────────────────────────────────────
@@ -396,6 +406,38 @@ function drawAppendix(doc: PDFKit.PDFDocument, report: AuditReport) {
   );
 }
 
+// ── SUPPORT THE CAUSE (Condo attribution + contribution address) ─────────
+function drawSupport(doc: PDFKit.PDFDocument) {
+  // Needs ~150pt; start a fresh page if the methodology ran long.
+  if (doc.y > PAGE.h - PAGE.m - 170) doc.addPage();
+  else doc.moveDown(2);
+
+  const top = doc.y;
+  const boxH = 132;
+  doc.roundedRect(PAGE.m, top, CONTENT_W, boxH, 8).fillAndStroke(BRAND.tintBg, '#CFE9CC');
+
+  const px = PAGE.m + 18;
+  doc.fillColor(BRAND.condoDk).font('Helvetica-Bold').fontSize(8)
+     .text(CONDO.poweredBy.toUpperCase(), px, top + 16, { characterSpacing: 2, lineBreak: false });
+  doc.fillColor(BRAND.ink).font('Helvetica-Bold').fontSize(13)
+     .text('Support the cause', px, top + 30, { lineBreak: false });
+  doc.fillColor('#33373D').font('Helvetica').fontSize(9)
+     .text(safe(CONDO.supportLead), px, top + 50, { width: CONTENT_W - 36, lineGap: 1.5 });
+
+  doc.fillColor(BRAND.muted).font('Helvetica').fontSize(7.5)
+     .text('CONTRIBUTION ADDRESS  ·  ANY EVM CHAIN', px, top + 88, { characterSpacing: 1.5, lineBreak: false });
+  doc.fillColor(BRAND.ink).font('Courier-Bold').fontSize(10.5)
+     .text(CONDO.wallet, px, top + 100, { width: CONTENT_W - 36, link: `https://etherscan.io/address/${CONDO.wallet}` });
+  doc.fillColor(BRAND.faint).font('Helvetica-Oblique').fontSize(7.5)
+     .text(safe(CONDO.supportFine), px, top + 115, { width: CONTENT_W - 36, lineBreak: false });
+
+  doc.y = top + boxH + 12;
+  doc.x = PAGE.m;
+  doc.fillColor(BRAND.muted).font('Helvetica').fontSize(8.5)
+     .text(`Audit Forge is a Condo product. Learn more at ${CONDO.productUrl.replace(/^https?:\/\//, '')}`,
+       PAGE.m, doc.y, { width: CONTENT_W, link: CONDO.productUrl });
+}
+
 // ── shared ────────────────────────────────────────────────────────────────
 function sectionHeader(doc: PDFKit.PDFDocument, text: string) {
   if (doc.y > PAGE.h - PAGE.m - 60) doc.addPage();
@@ -417,6 +459,10 @@ function drawFooters(doc: PDFKit.PDFDocument) {
     doc.lineWidth(0.5).strokeColor(BRAND.line).moveTo(PAGE.m, y).lineTo(PAGE.w - PAGE.m, y).stroke();
     doc.fillColor(BRAND.greenDk).font('Helvetica-Bold').fontSize(8)
        .text('AUDIT FORGE', PAGE.m, y + 6, { characterSpacing: 1.5, lineBreak: false });
+    // Measured placement: `continued` collapses the gap under characterSpacing.
+    const brandW = doc.widthOfString('AUDIT FORGE', { characterSpacing: 1.5 });
+    doc.fillColor(BRAND.condoDk).font('Helvetica').fontSize(7)
+       .text(`·  ${CONDO.poweredBy.toUpperCase()}`, PAGE.m + brandW + 8, y + 6.6, { characterSpacing: 1.2, lineBreak: false });
     doc.fillColor(BRAND.muted).font('Helvetica').fontSize(8)
        .text('auditforge.org', PAGE.m, y + 6, { width: CONTENT_W, align: 'center', lineBreak: false });
     doc.fillColor(BRAND.muted).font('Helvetica').fontSize(8)

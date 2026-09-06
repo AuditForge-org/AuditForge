@@ -56,6 +56,45 @@ window.Views = (function () {
   }
   function regScoreClass(score) { return score >= 80 ? 's-good' : score >= 60 ? 's-mid' : 's-bad'; }
 
+  // ── Powered by Condo + "support the cause" ────────────────────────
+  // Audit Forge is built and operated by Condo (condobase.io). Contributions
+  // go to a plain EOA, so any EVM network works. Keep in sync with
+  // backend/src/brand.ts (PDF + server-rendered pages) and index.html (footer).
+  const CONDO = {
+    name: 'Condo',
+    url: 'https://condobase.io',
+    productUrl: 'https://condobase.io/home/auditforge',
+    wallet: '0xEf3E49a3197417ccDbF5F6A60D89f7Fa4823199d',
+    logo: './condo-logo.png',
+  };
+  const poweredBy = () =>
+    `<span class="powered-line"><img src="${CONDO.logo}" alt="" width="33" height="16"> Powered by <a href="${CONDO.productUrl}" target="_blank" rel="noopener noreferrer">${CONDO.name}</a></span>`;
+  function supportCard(context) {
+    const lead = context === 'report'
+      ? 'This report was produced free of charge. Every scan costs real compute; the Condo treasury covers it so Audit Forge stays free and open for every builder.'
+      : 'Every scan costs real compute. If Audit Forge saved you an audit fee, support the cause with a contribution - it keeps the engines running and free for the next builder.';
+    return `<div class="support-band reveal" id="support">
+      <div>
+        <div class="brand-row">
+          <img src="${CONDO.logo}" alt="Condo bull and bear" width="69" height="34">
+          <span class="w">CONDO<sup>®</sup></span>
+          <span class="tag">Powered by Condo</span>
+        </div>
+        <h3>Support the cause</h3>
+        <p>${lead} Audit Forge is built and operated by <a href="${CONDO.url}" target="_blank" rel="noopener noreferrer">Condo</a>, the onchain treasury protocol.</p>
+      </div>
+      <div class="support-card">
+        <span class="k">Contribution address · any EVM chain</span>
+        <code class="addr">${CONDO.wallet}</code>
+        <div class="row">
+          <button type="button" class="btn btn-condo" data-copy-addr="${CONDO.wallet}">Copy address</button>
+          <a class="btn btn-ghost" href="ethereum:${CONDO.wallet}" title="Opens in a wallet that supports EIP-681 links">Open in wallet</a>
+        </div>
+        <div class="fine">Send ETH or tokens on Ethereum, Base, Arbitrum, Robinhood Chain or any EVM network. Contributions are voluntary and non-refundable.</div>
+      </div>
+    </div>`;
+  }
+
   // ── social sharing + embeddable backlink badge ────────────────────
   const SHARE_ICONS = {
     x: '<path d="M3 3l7.55 9.78L3.3 21H6l5.4-6.27L16.2 21H21l-7.93-10.27L20.4 3h-2.7l-4.97 5.77L8 3H3z" fill="currentColor"/>',
@@ -69,8 +108,8 @@ window.Views = (function () {
     const report = API.reportUrl(r.id);
     const badge  = API.badgeUrl(r.id);
     const crit = counts.critical || 0, high = counts.high || 0;
-    const text  = `🛡️ ${name} scored ${r.score}/100 on Audit Forge — ${enginesRun} security engines run, ${crit} critical / ${high} high findings reconciled by consensus. Audit your Solidity contract free:`;
-    const title = `${name} — ${r.score}/100 on Audit Forge`;
+    const text  = `🛡️ ${name} scored ${r.score}/100 on Audit Forge (powered by Condo) — ${enginesRun} security engines run, ${crit} critical / ${high} high findings reconciled by consensus. Audit your Solidity contract free:`;
+    const title = `${name} — ${r.score}/100 on Audit Forge, powered by Condo`;
     const t = encodeURIComponent(text), u = encodeURIComponent(url);
     return {
       url, report, badge, text, title,
@@ -119,7 +158,7 @@ window.Views = (function () {
           <a href="#consensus" class="btn btn-ghost">How consensus works</a>
         </div>
         <div class="hero-proof">
-          <span class="lbl">Powered by</span>
+          <span class="lbl">Engines</span>
           <div class="engines">
             <span style="--dot:var(--c-static)">Slither</span>
             <span style="--dot:var(--c-symbolic)">Mythril</span>
@@ -128,6 +167,14 @@ window.Views = (function () {
             <span style="--dot:var(--c-linter)">Solhint</span>
             <span style="--dot:var(--c-fuzzing)">Echidna</span>
           </div>
+        </div>
+        <div class="hero-proof" style="margin-top:18px;padding-top:18px">
+          <span class="lbl">Powered by</span>
+          <a class="condo-lockup" href="${CONDO.productUrl}" target="_blank" rel="noopener noreferrer" title="Built and operated by Condo, the onchain treasury protocol" style="padding-left:0;border-left:0">
+            <img src="${CONDO.logo}" alt="Condo bull and bear" width="53" height="26">
+            <span class="w">CONDO<sup>®</sup></span>
+          </a>
+          <a href="#support" class="lbl" style="color:var(--condo);text-decoration:none">Support the cause →</a>
         </div>
       </div>
       <aside class="hero-right reveal">
@@ -549,6 +596,7 @@ window.Views = (function () {
           <div><span class="k">Lines</span><span class="v">${(r.contract && r.contract.lines) || '—'}</span></div>
           <div><span class="k">Reconciled / raw</span><span class="v">${(r.consensusFindings || []).length} from ${rawTotal} reports</span></div>
         </div>
+        ${poweredBy()}
       </div>
       <div class="score-card">
         <span class="k">Audit Forge score</span>
@@ -624,7 +672,9 @@ window.Views = (function () {
       ${engineRows}
     </div>
 
-    <div style="margin-top:48px"><a class="btn btn-ghost" href="#/scan">← New scan</a></div>
+    <div style="margin-top:56px">${supportCard('report')}</div>
+
+    <div style="margin-top:8px"><a class="btn btn-ghost" href="#/scan">← New scan</a></div>
   </div>
 </section>`;
 
@@ -639,6 +689,7 @@ window.Views = (function () {
     copyTo('#af-copy2',     sh.report, 'Report link copied');
     copyTo('#af-copy-md',   sh.md,     'Markdown copied — paste into your README');
     copyTo('#af-copy-html', sh.html,   'HTML snippet copied');
+    copyTo('[data-copy-addr]', CONDO.wallet, 'Contribution address copied - thank you');
 
     const pub = $('#af-publish', root);
     if (pub) pub.addEventListener('click', async () => {

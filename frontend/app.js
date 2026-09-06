@@ -23,6 +23,20 @@
 
   let cleanupCurrentView = null;
 
+  // "Copy address" for the Condo support card. The footer card is static
+  // (index.html) and the report page renders its own; one delegated handler
+  // covers both. The report view also wires its own button, so skip those.
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('[data-copy-addr]');
+    if (!b || VIEW_EL.contains(b)) return;
+    const addr = b.getAttribute('data-copy-addr');
+    const done = () => Views.toast('Contribution address copied - thank you');
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(addr).then(done, () => Views.toast('Copy failed', true));
+      else { window.prompt('Copy the contribution address:', addr); }
+    } catch (err) { Views.toast('Copy failed', true); }
+  });
+
   function resolve() {
     const hash = window.location.hash.replace(/^#/, '') || '/scan';
     for (const r of ROUTES) {

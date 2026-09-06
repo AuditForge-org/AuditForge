@@ -570,3 +570,76 @@
   margin: 14px 0 0; text-align: center;
 }
 .af-modal-fine a { color: var(--amber); }
+
+/* ============================================================
+   POWERED BY CONDO + SUPPORT THE CAUSE
+   Audit Forge is built and operated by Condo (condobase.io).
+   ============================================================ */
+.condo-pill {
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 5px 11px 5px 6px; border: 1px solid var(--line-2); border-radius: 999px;
+  background: var(--tint); color: var(--ink-2); text-decoration: none;
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em; text-transform: uppercase;
+  transition: border-color .2s, color .2s;
+}
+.condo-pill:hover { border-color: var(--condo, #3fbf3a); color: var(--ink); }
+.condo-pill img { height: 20px; width: auto; display: block; }
+.condo-pill b { color: var(--condo, #3fbf3a); font-weight: 600; }
+:root { --condo: #3fbf3a; --condo-2: #5fd957; --condo-soft: rgba(63,191,58,0.12); --condo-line: rgba(63,191,58,0.34); }
+[data-theme="light"] { --condo: #2fa32b; --condo-2: #3fbf3a; --condo-soft: rgba(47,163,43,0.10); --condo-line: rgba(47,163,43,0.36); }
+
+.condo-lockup { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; color: var(--ink); }
+.condo-lockup img { height: 26px; width: auto; display: block; }
+.condo-lockup .w { font-family: var(--mono); font-weight: 600; letter-spacing: 0.18em; font-size: 13px; }
+.condo-lockup .w sup { color: var(--condo); font-size: 0.55em; margin-left: 1px; }
+.hero-proof .condo-lockup { padding-left: 22px; border-left: 1px solid var(--line-2); }
+.hero-proof .condo-lockup:hover .w { color: var(--condo); }
+.powered-line {
+  font-family: var(--mono); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--ink-3); display: inline-flex; align-items: center; gap: 8px; margin-top: 12px;
+}
+.powered-line img { height: 16px; width: auto; }
+.powered-line a { color: var(--condo); text-decoration: none; font-weight: 600; }
+.powered-line a:hover { text-decoration: underline; }
+
+/* support band: full-width strip (footer + report page) */
+.support-band {
+  display: grid; grid-template-columns: 1.2fr 1fr; gap: 32px; align-items: center;
+  border: 1px solid var(--condo-line); border-radius: 18px; padding: 30px 34px; margin: 0 0 56px;
+  background:
+    radial-gradient(640px 260px at 0% 120%, var(--condo-soft), transparent 70%),
+    linear-gradient(180deg, var(--panel), var(--bg-2));
+  position: relative; overflow: hidden;
+}
+.support-band .eyebrow { color: var(--condo); }
+.support-band h3 { font-family: var(--sans); font-weight: 700; letter-spacing: -0.02em; font-size: 24px; margin: 8px 0 10px; color: var(--ink); }
+.support-band p { color: var(--ink-2); font-size: 14.5px; line-height: 1.65; margin: 0; max-width: 52ch; }
+.support-band p a { color: var(--condo); }
+.support-band .brand-row { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+.support-band .brand-row img { height: 34px; width: auto; }
+.support-band .brand-row .w { font-family: var(--mono); font-weight: 600; letter-spacing: 0.2em; font-size: 14px; color: var(--ink); }
+.support-band .brand-row .w sup { color: var(--condo); font-size: 0.55em; }
+.support-band .brand-row .tag { font-family: var(--mono); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--ink-3); padding-left: 14px; border-left: 1px solid var(--line-2); }
+.support-card {
+  border: 1px solid var(--line-2); border-radius: 14px; background: var(--panel-2); padding: 20px 22px;
+}
+.support-card .k { font-family: var(--mono); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--ink-3); display: block; margin-bottom: 10px; }
+.support-card .addr {
+  display: block; font-family: var(--mono); font-size: 12.5px; color: var(--ink); letter-spacing: 0.02em;
+  background: var(--bg); border: 1px solid var(--line); border-radius: 9px; padding: 11px 13px;
+  overflow-wrap: anywhere; word-break: break-all; line-height: 1.5;
+}
+.support-card .row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+.support-card .row .btn { padding: 10px 16px; font-size: 13px; }
+.support-card .btn-condo { background: var(--condo); border-color: var(--condo); color: #04120a; }
+.support-card .btn-condo:hover { background: var(--condo-2); border-color: var(--condo-2); }
+.support-card .fine { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.04em; color: var(--ink-4); margin-top: 12px; line-height: 1.6; }
+.footer .support-band { margin: 0 0 56px; }
+@media (max-width: 860px) {
+  .support-band { grid-template-columns: 1fr; padding: 26px 22px; }
+}
+@media (max-width: 680px) {
+  .condo-pill span { display: none; }
+  .condo-pill { padding: 4px 8px 4px 5px; }
+  .hero-proof .condo-lockup { padding-left: 0; border-left: 0; }
+}

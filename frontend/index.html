@@ -44,8 +44,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./auditforge.css?v=20260702b">
-<link rel="stylesheet" href="./auditforge-pages.css?v=20260702b">
+<link rel="stylesheet" href="./auditforge.css?v=20260906a">
+<link rel="stylesheet" href="./auditforge-pages.css?v=20260906a">
 <style>
   /* ── SPA-only helpers (themed via design tokens) ── */
   #view { position: relative; z-index: 1; }
@@ -128,8 +128,9 @@
     <span class="item"><span class="sep">//</span> <b>METHODS</b> STATIC · SYMBOLIC · FUZZING</span>
     <span class="item"><span class="sep">//</span> <b>TYPICAL SCAN</b> UNDER 60 SECONDS</span>
     <span class="item"><span class="sep">//</span> <b>LICENSE</b> AGPL-3.0 · 100% OPEN SOURCE</span>
-    <span class="item"><span class="sep">//</span> <b>NETWORKS</b> ETHEREUM · BASE · ARBITRUM · OPTIMISM · POLYGON · BNB CHAIN · ETHEREUMPOW</span>
+    <span class="item"><span class="sep">//</span> <b>NETWORKS</b> ETHEREUM · BASE · ARBITRUM · OPTIMISM · POLYGON · BNB CHAIN · ROBINHOOD CHAIN · ETHEREUMPOW</span>
     <span class="item"><span class="sep">//</span> <b>FINDINGS</b> SWC-MAPPED · CONSENSUS-SCORED</span>
+    <span class="item"><span class="sep">//</span> <b>POWERED BY</b> <span class="ok">CONDO</span> · CONDOBASE.IO</span>
   </div>
 </div>
 
@@ -151,6 +152,10 @@
       <a href="/registry">Registry</a>
     </nav>
     <div class="right">
+      <a class="condo-pill" href="https://condobase.io/home/auditforge" target="_blank" rel="noopener noreferrer" title="Audit Forge is built and operated by Condo">
+        <img src="./condo-logo.png" alt="Condo bull and bear" width="41" height="20">
+        <span>Powered by <b>Condo</b></span>
+      </a>
       <span class="api-pill" id="api-status"><span class="dot"></span>API</span>
       <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle dark mode" title="Toggle light / dark">
         <svg class="i-sun" viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="4.2" stroke="currentColor" stroke-width="1.7"></circle><path d="M12 2.6v2.6M12 18.8v2.6M2.6 12h2.6M18.8 12h2.6M5.4 5.4l1.8 1.8M16.8 16.8l1.8 1.8M18.6 5.4l-1.8 1.8M7.2 16.8l-1.8 1.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"></path></svg>
@@ -167,6 +172,26 @@
 <!-- ============ FOOTER ============ -->
 <footer class="footer">
   <div class="wrap">
+    <div class="support-band" id="support">
+      <div>
+        <div class="brand-row">
+          <img src="./condo-logo.png" alt="Condo bull and bear" width="69" height="34">
+          <span class="w">CONDO<sup>®</sup></span>
+          <span class="tag">Powered by Condo</span>
+        </div>
+        <h3>Free for everyone. Funded by the Condo treasury.</h3>
+        <p>Audit Forge is built and operated by <a href="https://condobase.io" target="_blank" rel="noopener noreferrer">Condo</a>, the onchain treasury protocol. Every scan costs real compute. If Audit Forge saved you an audit fee, support the cause with a contribution - it keeps the engines running and free for the next builder.</p>
+      </div>
+      <div class="support-card">
+        <span class="k">Support the cause · any EVM chain</span>
+        <code class="addr" id="support-addr">0xEf3E49a3197417ccDbF5F6A60D89f7Fa4823199d</code>
+        <div class="row">
+          <button type="button" class="btn btn-condo" data-copy-addr="0xEf3E49a3197417ccDbF5F6A60D89f7Fa4823199d">Copy address</button>
+          <a class="btn btn-ghost" href="ethereum:0xEf3E49a3197417ccDbF5F6A60D89f7Fa4823199d" title="Opens in a wallet that supports EIP-681 links">Open in wallet</a>
+        </div>
+        <div class="fine">Send ETH or tokens on Ethereum, Base, Arbitrum, Robinhood Chain or any EVM network. Contributions are voluntary and non-refundable.</div>
+      </div>
+    </div>
     <div class="footer-grid">
       <div>
         <a href="#/scan" class="brand">
@@ -180,6 +205,7 @@
         </a>
         <p class="desc">Multi-engine smart-contract security analysis. Six independent tools, one reconciled verdict — static analysis, symbolic execution, and property fuzzing, in parallel.</p>
         <a href="https://github.com/AuditForge-org/AuditForge" target="_blank" rel="noopener" class="src">↗ Source code · AGPL-3.0</a>
+        <div class="powered-line"><img src="./condo-logo.png" alt="" width="33" height="16"> Powered by <a href="https://condobase.io" target="_blank" rel="noopener noreferrer">Condo</a></div>
       </div>
       <div class="col">
         <h4>Product</h4>
@@ -196,6 +222,8 @@
       </div>
       <div class="col">
         <h4>Resources</h4>
+        <a href="https://condobase.io" target="_blank" rel="noopener">Condo · condobase.io</a>
+        <a href="#support">Support the cause</a>
         <a href="https://swcregistry.io/" target="_blank" rel="noopener">SWC registry</a>
         <a href="/registry">Registry</a>
         <a href="/terms/">Terms of Service</a>
@@ -203,8 +231,8 @@
       </div>
     </div>
     <div class="footer-base">
-      <span>Audit Forge automates the first pass — it is <b>not</b> a substitute for a professional manual audit. Provided without warranty; use at your own risk.</span>
-      <span class="legal-links"><a href="/terms/">Terms</a> · <a href="/privacy/">Privacy</a></span>
+      <span>Audit Forge automates the first pass — it is <b>not</b> a substitute for a professional manual audit. Provided without warranty; use at your own risk. <b>Powered by Condo.</b></span>
+      <span class="legal-links"><a href="/terms/">Terms</a> · <a href="/privacy/">Privacy</a> · <a href="https://condobase.io" target="_blank" rel="noopener">Condo</a></span>
     </div>
   </div>
 </footer>
@@ -212,9 +240,9 @@
 <div class="toast" id="toast"></div>
 
 <!-- App scripts -->
-<script src="./api.js?v=20260702b"></script>
-<script src="./auditforge.js?v=20260702b"></script>
-<script src="./views.js?v=20260702b"></script>
-<script src="./app.js?v=20260702b"></script>
+<script src="./api.js?v=20260906a"></script>
+<script src="./auditforge.js?v=20260906a"></script>
+<script src="./views.js?v=20260906a"></script>
+<script src="./app.js?v=20260906a"></script>
 </body>
 </html>
