@@ -14,8 +14,8 @@ import { CONDO } from '../brand';
 // ── palette ─────────────────────────────────────────────────────────────
 const BRAND = {
   dark:    '#0A0C0F',   // cover background
-  green:   '#3BDDA4',   // brand mint (on dark)
-  greenDk: '#0B8B5F',   // brand green (on white — legible)
+  green:   '#3fbf3a',   // brand green = Condo candlestick green (on dark)
+  greenDk: '#2fa32b',   // brand green (on white — legible)
   ink:     '#181A1D',
   condo:   '#3fbf3a',   // Condo candlestick green (on dark)
   condoDk: '#2fa32b',   // Condo green (on white)
@@ -142,14 +142,9 @@ function drawCover(doc: PDFKit.PDFDocument, report: AuditReport) {
   // top accent
   doc.rect(0, 0, PAGE.w, 6).fill(t.color);
 
-  // wordmark: diamond + text
+  // wordmark: Six-to-one mark + text
   const lx = PAGE.m, ly = 64;
-  doc.save();
-  doc.lineWidth(1.6).strokeColor(t.color)
-     .moveTo(lx + 13, ly).lineTo(lx + 26, ly + 13).lineTo(lx + 13, ly + 26).lineTo(lx, ly + 13).closePath().stroke();
-  doc.lineWidth(1.3).strokeColor(t.color)
-     .moveTo(lx + 13, ly + 6).lineTo(lx + 20, ly + 13).lineTo(lx + 13, ly + 20).lineTo(lx + 6, ly + 13).closePath().stroke();
-  doc.restore();
+  drawMark(doc, lx - 2, ly - 3, 32, t.color);
   doc.fillColor(BRAND.onDark).font('Helvetica-Bold').fontSize(17)
      .text('AUDIT FORGE', lx + 40, ly + 1, { characterSpacing: 3 });
   doc.fillColor(BRAND.onDarkMuted).font('Helvetica').fontSize(8)
@@ -439,6 +434,36 @@ function drawSupport(doc: PDFKit.PDFDocument) {
 }
 
 // ── shared ────────────────────────────────────────────────────────────────
+/**
+ * The Six-to-one mark: six engine nodes (diamonds) on a hexagon, spokes
+ * converging on one verified center. Same geometry as frontend/logo-mark.svg
+ * (64-unit box), drawn with PDFKit primitives at `size` points.
+ */
+function drawMark(doc: PDFKit.PDFDocument, x: number, y: number, size: number, color: string) {
+  const k = size / 64;
+  const P = (ux: number, uy: number): [number, number] => [x + ux * k, y + uy * k];
+  const nodes: Array<[number, number]> = [[54, 32], [43, 51], [21, 51], [10, 32], [21, 13], [43, 13]];
+  doc.save();
+  // spokes (node -> just outside the center ring)
+  doc.lineWidth(2 * k).strokeColor(color).opacity(0.55);
+  for (const [nx, ny] of nodes) {
+    const dx = 32 - nx, dy = 32 - ny, len = Math.hypot(dx, dy);
+    const ex = nx + (dx / len) * (len - 13.5), ey = ny + (dy / len) * (len - 13.5);
+    doc.moveTo(...P(nx, ny)).lineTo(...P(ex, ey)).stroke();
+  }
+  doc.opacity(1);
+  // nodes (rotated squares, half-diagonal = 8 * sqrt(2) / 2)
+  const d = 5.657;
+  for (const [nx, ny] of nodes) {
+    doc.moveTo(...P(nx, ny - d)).lineTo(...P(nx + d, ny)).lineTo(...P(nx, ny + d)).lineTo(...P(nx - d, ny)).closePath().fill(color);
+  }
+  // center ring + check
+  doc.lineWidth(2.6 * k).strokeColor(color).circle(...P(32, 32), 9.5 * k).stroke();
+  doc.lineWidth(3 * k).lineCap('round').lineJoin('round').strokeColor(color)
+     .moveTo(...P(27.2, 32.2)).lineTo(...P(30.6, 35.6)).lineTo(...P(37.2, 28.6)).stroke();
+  doc.restore();
+}
+
 function sectionHeader(doc: PDFKit.PDFDocument, text: string) {
   if (doc.y > PAGE.h - PAGE.m - 60) doc.addPage();
   doc.fillColor(BRAND.greenDk).font('Helvetica-Bold').fontSize(13)

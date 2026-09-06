@@ -26,10 +26,10 @@
   --amber-fill:#F4A52A;
   --btn-ink:   #1c1304;
 
-  --green:     #3BDDA4;
-  --green-2:   #6CF0C2;
-  --green-soft:rgba(59,221,164,0.12);
-  --green-line:rgba(59,221,164,0.34);
+  --green:     #3fbf3a;
+  --green-2:   #5fd957;
+  --green-soft:rgba(63,191,58,0.12);
+  --green-line:rgba(63,191,58,0.34);
   --red:       #F36A6E;
 
   --topbar-bg: rgba(7,8,10,0.78);
@@ -40,7 +40,7 @@
   --c-static:  #6CA8FF;
   --c-symbolic:#C39BFF;
   --c-pattern: #FFC15E;
-  --c-linter:  #6CF0C2;
+  --c-linter:  #5fd957;
   --c-fuzzing: #F36A6E;
 
   --serif: "Newsreader", Georgia, serif;
@@ -74,7 +74,7 @@ body::before {
   position: fixed; inset: 0;
   background:
     radial-gradient(1000px 640px at 80% -10%, rgba(244,165,42,0.08), transparent 60%),
-    radial-gradient(1100px 700px at 6% 0%, rgba(59,221,164,0.045), transparent 55%);
+    radial-gradient(1100px 700px at 6% 0%, rgba(63,191,58,0.045), transparent 55%);
   pointer-events: none; z-index: 0;
 }
 body::after {
@@ -245,9 +245,9 @@ section { position: relative; z-index: 1; }
   animation: pulse 2.6s infinite;
 }
 @keyframes pulse {
-  0% { box-shadow: 0 0 0 0 rgba(59,221,164,0.45); }
-  70% { box-shadow: 0 0 0 7px rgba(59,221,164,0); }
-  100% { box-shadow: 0 0 0 0 rgba(59,221,164,0); }
+  0% { box-shadow: 0 0 0 0 rgba(63,191,58,0.45); }
+  70% { box-shadow: 0 0 0 7px rgba(63,191,58,0); }
+  100% { box-shadow: 0 0 0 0 rgba(63,191,58,0); }
 }
 .sign-in {
   font-family: var(--mono); font-size: 12px; letter-spacing: 0.1em;
@@ -561,7 +561,7 @@ section { position: relative; z-index: 1; }
 
 .diagram {
   border: 1px solid var(--line-2); border-radius: var(--radius);
-  background: radial-gradient(620px 380px at 70% 50%, rgba(59,221,164,0.05), transparent 70%), var(--panel);
+  background: radial-gradient(620px 380px at 70% 50%, rgba(63,191,58,0.05), transparent 70%), var(--panel);
   padding: 30px; position: relative;
 }
 .diagram svg { width: 100%; height: auto; display: block; }
@@ -730,10 +730,10 @@ section { position: relative; z-index: 1; }
   --amber-soft:rgba(156,88,6,0.10);
   --amber-line:rgba(156,88,6,0.28);
 
-  --green:     #0B8B5F;
-  --green-2:   #0A7C53;
-  --green-soft:rgba(11,139,95,0.12);
-  --green-line:rgba(11,139,95,0.30);
+  --green:     #2fa32b;
+  --green-2:   #278a24;
+  --green-soft:rgba(47,163,43,0.12);
+  --green-line:rgba(47,163,43,0.30);
   --red:       #CF4540;
 
   --btn-ink:   #2a1803;
@@ -745,13 +745,13 @@ section { position: relative; z-index: 1; }
   --c-static:  #2C6BDC;
   --c-symbolic:#7747D2;
   --c-pattern: #B06708;
-  --c-linter:  #0B8B5F;
+  --c-linter:  #2fa32b;
   --c-fuzzing: #CF4540;
 }
 [data-theme="light"] body::before {
   background:
     radial-gradient(820px 540px at 80% -10%, rgba(156,88,6,0.07), transparent 60%),
-    radial-gradient(900px 600px at 8% 2%, rgba(11,139,95,0.04), transparent 55%);
+    radial-gradient(900px 600px at 8% 2%, rgba(47,163,43,0.04), transparent 55%);
 }
 [data-theme="light"] body::after { opacity: 0.7; }
 [data-theme="light"] .console { box-shadow: 0 0 0 6px var(--tint-soft), 0 30px 70px -48px rgba(40,30,10,0.45); }
@@ -780,24 +780,25 @@ section { position: relative; z-index: 1; }
   --amber-soft:rgba(106,57,212,0.10); --amber-line:rgba(106,57,212,0.30); --btn-ink:#ffffff;
 }
 /* Emerald — matches the report/OG card's black + mint-green look */
+/* Condo palette (2026-09-06): candlestick green #3fbf3a / #5fd957 on dark, #2fa32b on light. */
 [data-accent="emerald"] {
-  --amber:#3BDDA4; --amber-2:#6CF0C2; --amber-fill:#2FD39A;
-  --amber-soft:rgba(59,221,164,0.13); --amber-line:rgba(59,221,164,0.36); --btn-ink:#04130d;
+  --amber:#3fbf3a; --amber-2:#5fd957; --amber-fill:#3fbf3a;
+  --amber-soft:rgba(63,191,58,0.13); --amber-line:rgba(63,191,58,0.36); --btn-ink:#04120a;
 }
 [data-theme="light"][data-accent="emerald"] {
-  --amber:#0B8B5F; --amber-2:#0FA06E; --amber-fill:#0B8B5F;
-  --amber-soft:rgba(11,139,95,0.12); --amber-line:rgba(11,139,95,0.32); --btn-ink:#ffffff;
+  --amber:#2fa32b; --amber-2:#3fbf3a; --amber-fill:#2fa32b;
+  --amber-soft:rgba(47,163,43,0.12); --amber-line:rgba(47,163,43,0.32); --btn-ink:#ffffff;
 }
 /* keep the ambient wash green (not amber) so the dark canvas reads cohesively */
 [data-accent="emerald"] body::before {
   background:
-    radial-gradient(1000px 640px at 80% -10%, rgba(59,221,164,0.10), transparent 60%),
-    radial-gradient(1100px 700px at 6% 0%, rgba(59,221,164,0.05), transparent 55%);
+    radial-gradient(1000px 640px at 80% -10%, rgba(63,191,58,0.10), transparent 60%),
+    radial-gradient(1100px 700px at 6% 0%, rgba(63,191,58,0.05), transparent 55%);
 }
 [data-theme="light"][data-accent="emerald"] body::before {
   background:
-    radial-gradient(820px 540px at 80% -10%, rgba(11,139,95,0.08), transparent 60%),
-    radial-gradient(900px 600px at 8% 2%, rgba(11,139,95,0.05), transparent 55%);
+    radial-gradient(820px 540px at 80% -10%, rgba(47,163,43,0.08), transparent 60%),
+    radial-gradient(900px 600px at 8% 2%, rgba(47,163,43,0.05), transparent 55%);
 }
 
 /* ============================================================

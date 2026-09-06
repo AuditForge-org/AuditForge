@@ -98,8 +98,17 @@ export function notFoundBadgeSvg(): string {
    from the image's apt-installed Inter + JetBrains Mono. Each shared report
    unfurls with its own score/grade/findings baked in. */
 
+/** The Six-to-one mark (six engine nodes converging on one verified center),
+    64-unit box, colour baked in for resvg. Same geometry as frontend/logo-mark.svg. */
+export function markSvg(color: string): string {
+  return `<g stroke="${color}" stroke-width="2" opacity="0.55"><line x1="54" y1="32" x2="41" y2="32"/><line x1="43" y1="51" x2="36.5" y2="39.8"/><line x1="21" y1="51" x2="27.5" y2="39.8"/><line x1="10" y1="32" x2="23" y2="32"/><line x1="21" y1="13" x2="27.5" y2="24.2"/><line x1="43" y1="13" x2="36.5" y2="24.2"/></g>` +
+    `<g fill="${color}"><rect x="50" y="28" width="8" height="8" transform="rotate(45 54 32)"/><rect x="39" y="47" width="8" height="8" transform="rotate(45 43 51)"/><rect x="17" y="47" width="8" height="8" transform="rotate(45 21 51)"/><rect x="6" y="28" width="8" height="8" transform="rotate(45 10 32)"/><rect x="17" y="9" width="8" height="8" transform="rotate(45 21 13)"/><rect x="39" y="9" width="8" height="8" transform="rotate(45 43 13)"/></g>` +
+    `<circle cx="32" cy="32" r="9.5" fill="none" stroke="${color}" stroke-width="2.6"/>` +
+    `<path d="M27.2 32.2 L30.6 35.6 L37.2 28.6" fill="none" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+}
+
 function cardTierColor(score: number): string {
-  if (score >= 85) return '#3BDDA4'; // green
+  if (score >= 85) return '#3fbf3a'; // Condo green
   if (score >= 70) return '#86D45A'; // lime
   if (score >= 50) return '#F4A52A'; // amber
   return '#F36A6E';                  // red
@@ -164,8 +173,7 @@ export function renderOgCardSvg(report: AuditReport): string {
 <rect width="1200" height="630" fill="#0a0c0f"/>
 <rect width="1200" height="630" fill="url(#glow)"/>
 <g transform="translate(70,52)">
-  <path d="M16 2 L29 16 L16 30 L3 16 Z" fill="none" stroke="${color}" stroke-width="1.8"/>
-  <path d="M16 9 L23 16 L16 23 L9 16 Z" fill="${color}" fill-opacity="0.18" stroke="${color}" stroke-width="1.5"/>
+  <g transform="translate(-6,-4) scale(0.62)">${markSvg(color)}</g>
   <text x="46" y="15" font-family="JetBrains Mono" font-weight="600" font-size="20" letter-spacing="5" fill="#eef0f2">AUDIT FORGE</text>
   <text x="46" y="33" font-family="JetBrains Mono" font-size="11" letter-spacing="3" fill="#6e7580">MULTI-ENGINE AUDIT CONSOLE</text>
 </g>
@@ -212,7 +220,7 @@ function sevCountsAll(report: AuditReport): Record<string, number> {
   return c;
 }
 
-const RP_TOPBAR = `<header class="topbar"><div class="wrap"><a href="/" class="brand"><span class="mark"><svg viewBox="0 0 32 32" fill="none"><path d="M16 2 L29 16 L16 30 L3 16 Z" stroke="currentColor" stroke-width="1.6"></path><path d="M16 9 L23 16 L16 23 L9 16 Z" fill="currentColor" fill-opacity="0.16" stroke="currentColor" stroke-width="1.4"></path></svg></span><span class="name">AUDIT FORGE<small>MULTI-ENGINE AUDIT CONSOLE</small></span></a><nav class="nav"><a href="/#/scan">Scan</a><a href="/engines/">Engines</a><a href="/registry">Registry</a></nav></div></header>`;
+const RP_TOPBAR = `<header class="topbar"><div class="wrap"><a href="/" class="brand"><span class="mark"><svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><g stroke="currentColor" stroke-width="2" opacity="0.55"><line x1="54" y1="32" x2="41" y2="32"></line><line x1="43" y1="51" x2="36.5" y2="39.8"></line><line x1="21" y1="51" x2="27.5" y2="39.8"></line><line x1="10" y1="32" x2="23" y2="32"></line><line x1="21" y1="13" x2="27.5" y2="24.2"></line><line x1="43" y1="13" x2="36.5" y2="24.2"></line></g><g fill="currentColor"><rect x="50" y="28" width="8" height="8" transform="rotate(45 54 32)"></rect><rect x="39" y="47" width="8" height="8" transform="rotate(45 43 51)"></rect><rect x="17" y="47" width="8" height="8" transform="rotate(45 21 51)"></rect><rect x="6" y="28" width="8" height="8" transform="rotate(45 10 32)"></rect><rect x="17" y="9" width="8" height="8" transform="rotate(45 21 13)"></rect><rect x="39" y="9" width="8" height="8" transform="rotate(45 43 13)"></rect></g><circle cx="32" cy="32" r="9.5" stroke="currentColor" stroke-width="2.6"></circle><path d="M27.2 32.2 L30.6 35.6 L37.2 28.6" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path></svg></span><span class="name">AUDIT FORGE<small>MULTI-ENGINE AUDIT CONSOLE</small></span></a><nav class="nav"><a href="/#/scan">Scan</a><a href="/engines/">Engines</a><a href="/registry">Registry</a></nav></div></header>`;
 const RP_FOOTER = `<footer class="footer"><div class="wrap"><div class="footer-base"><span>Audit Forge automates the first pass — it is <b>not</b> a substitute for a professional manual audit. Provided without warranty. <b>${CONDO.poweredBy}.</b></span><span class="legal-links"><a href="/terms/">Terms</a> · <a href="/privacy/">Privacy</a> · <a href="/engines/">Engines</a> · <a href="${CONDO.url}" target="_blank" rel="noopener">Condo</a></span></div></div></footer>`;
 
 /** "Support the cause" block for the server-rendered report page. */
@@ -231,12 +239,13 @@ export function renderOgShell(
   origin: string,
   published = false,
 ): string {
-  const css = `<link rel="stylesheet" href="${escapeXml(origin)}/auditforge.css?v=20260906a"><link rel="stylesheet" href="${escapeXml(origin)}/auditforge-pages.css?v=20260906a"><style>${RP_CSS}${RP_SUPPORT_CSS}</style>`;
+  const css = `<link rel="stylesheet" href="${escapeXml(origin)}/auditforge.css?v=20260906b"><link rel="stylesheet" href="${escapeXml(origin)}/auditforge-pages.css?v=20260906b"><style>${RP_CSS}${RP_SUPPORT_CSS}</style>`;
   const head = (title: string, desc: string, robots: string, extra = '') =>
     `<!DOCTYPE html><html lang="en" data-theme="dark" data-accent="emerald" data-headline="sans"><head>` +
     `<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">` +
     `<title>${escapeXml(title)}</title><meta name="description" content="${escapeXml(desc)}">` +
-    `<meta name="robots" content="${robots}"><meta name="theme-color" content="#07080A">${extra}${css}</head>`;
+    `<meta name="robots" content="${robots}"><meta name="theme-color" content="#07080A">` +
+    `<link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="apple-touch-icon" href="/apple-touch-icon.png">${extra}${css}</head>`;
 
   if (!report) {
     return head('Report not found — Audit Forge', 'This audit report could not be found.', 'noindex,follow') +

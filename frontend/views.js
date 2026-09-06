@@ -384,7 +384,7 @@ window.Views = (function () {
 <section class="section" id="cta" style="padding-top:0">
   <div class="wrap">
     <div class="cta-band reveal">
-      <span class="watermark"><svg viewBox="0 0 32 32" fill="none"><path d="M16 2 L29 16 L16 30 L3 16 Z" stroke="currentColor" stroke-width="0.8"></path><path d="M16 9 L23 16 L16 23 L9 16 Z" stroke="currentColor" stroke-width="0.6"></path></svg></span>
+      <span class="watermark"><svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><g stroke="currentColor" stroke-width="2" opacity="0.55"><line x1="54" y1="32" x2="41" y2="32"></line><line x1="43" y1="51" x2="36.5" y2="39.8"></line><line x1="21" y1="51" x2="27.5" y2="39.8"></line><line x1="10" y1="32" x2="23" y2="32"></line><line x1="21" y1="13" x2="27.5" y2="24.2"></line><line x1="43" y1="13" x2="36.5" y2="24.2"></line></g><g fill="currentColor"><rect x="50" y="28" width="8" height="8" transform="rotate(45 54 32)"></rect><rect x="39" y="47" width="8" height="8" transform="rotate(45 43 51)"></rect><rect x="17" y="47" width="8" height="8" transform="rotate(45 21 51)"></rect><rect x="6" y="28" width="8" height="8" transform="rotate(45 10 32)"></rect><rect x="17" y="9" width="8" height="8" transform="rotate(45 21 13)"></rect><rect x="39" y="9" width="8" height="8" transform="rotate(45 43 13)"></rect></g><circle cx="32" cy="32" r="9.5" stroke="currentColor" stroke-width="2.6"></circle><path d="M27.2 32.2 L30.6 35.6 L37.2 28.6" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
       <span class="mono-label">No sign-up to start · No credit card · Under 60 seconds</span>
       <h2>Run your first <span class="amber">audit</span> now</h2>
       <p>It takes one paste and a few seconds.</p>
@@ -942,7 +942,7 @@ window.Views = (function () {
 </section>
 <section class="section" id="cta" style="padding-top:0">
   <div class="wrap"><div class="cta-band reveal">
-    <span class="watermark"><svg viewBox="0 0 32 32" fill="none"><path d="M16 2 L29 16 L16 30 L3 16 Z" stroke="currentColor" stroke-width="0.8"></path><path d="M16 9 L23 16 L16 23 L9 16 Z" stroke="currentColor" stroke-width="0.6"></path></svg></span>
+    <span class="watermark"><svg viewBox="0 0 64 64" fill="none" aria-hidden="true"><g stroke="currentColor" stroke-width="2" opacity="0.55"><line x1="54" y1="32" x2="41" y2="32"></line><line x1="43" y1="51" x2="36.5" y2="39.8"></line><line x1="21" y1="51" x2="27.5" y2="39.8"></line><line x1="10" y1="32" x2="23" y2="32"></line><line x1="21" y1="13" x2="27.5" y2="24.2"></line><line x1="43" y1="13" x2="36.5" y2="24.2"></line></g><g fill="currentColor"><rect x="50" y="28" width="8" height="8" transform="rotate(45 54 32)"></rect><rect x="39" y="47" width="8" height="8" transform="rotate(45 43 51)"></rect><rect x="17" y="47" width="8" height="8" transform="rotate(45 21 51)"></rect><rect x="6" y="28" width="8" height="8" transform="rotate(45 10 32)"></rect><rect x="17" y="9" width="8" height="8" transform="rotate(45 21 13)"></rect><rect x="39" y="9" width="8" height="8" transform="rotate(45 43 13)"></rect></g><circle cx="32" cy="32" r="9.5" stroke="currentColor" stroke-width="2.6"></circle><path d="M27.2 32.2 L30.6 35.6 L37.2 28.6" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"></path></svg></span>
     <span class="mono-label">Free for public repositories</span>
     <h2>Gate every merge on a <span class="amber">verdict</span></h2>
     <p>Install once. Every contract change gets six opinions before it ships.</p>
